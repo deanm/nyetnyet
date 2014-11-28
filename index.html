@@ -1,1 +1,2971 @@
-nyet
+<html><head><style>/*
+*/
+@import url(http://fonts.googleapis.com/css?family=Inconsolata);
+
+body {
+  padding: 0;
+  margin: 0;
+  font-family: 'Inconsolata', 'Inconsolata-dz', fixed;
+  font-weight: 400;
+}
+
+div {
+  outline: 0;  /* no focus ring */
+}
+
+div.usbbare-lazytable-container {
+  margin-top: 1.5em;
+  position: relative;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+
+div.usbbare-list {
+  cursor: default;
+  width: 42em;
+}
+
+div.usbbare-list span {
+  display: inline-block;
+  padding-right: 0.5em;
+}
+
+div.usbbare-row>span:first-child {
+  width: 4em;
+  text-align: right;
+  border-right: 1px solid #ddd;
+}
+
+div.usbbare-row>span:nth-child(2) {
+  width: 6em;
+  text-align: right;
+  border-right: 1px solid #ddd;
+}
+
+div.usbbare-row>span:nth-child(3) {
+  display: inline-block;
+  width: 25em;
+  padding-left: 1em;
+}
+
+div.usbbare-p {
+  padding-top: 1em;
+  padding-bottom: 1em;
+  padding-left: 8em;
+  margin-left: 7px;
+}
+
+span.usbbare-bitfield {
+  padding-left: 0.3em;
+}
+
+span.usbbare-bitfield span.bad {
+  color: #c00;
+}
+
+span.usbbare-bitfield:hover {
+  text-decoration: underline;
+}
+
+div.usbbare-panel {
+  border: 1px solid #ddd;
+  padding: 0.5em;
+  margin-top: 1.5em;
+
+  position: fixed;
+  left: 42em;
+  height: 40em;
+  width: 35em;
+  overflow: scroll;
+}
+
+div.usbbare-panel table {
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+
+div.usbbare-panel tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+div.usbbare-panel td {
+  padding: 0;
+  padding-right: 0.3em;
+  padding-left: 1em;
+  xborder: 1px solid #ddd
+}
+
+div.usbbare-panel td:first-child {
+  padding: 0;
+  padding-right: 1em;
+  width: 20em;
+}
+
+div.usbbare-panel td:nth-child(2) {
+  width: 2em;
+}
+
+div.usbbare-panel td:nth-child(3) {
+  width: 3em;
+}
+
+div.usbbare-nav {
+  z-index: 2;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background-color: #ddd;
+  height: 1.3em;
+  padding-left: 2em;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+</style><script>
+rawpcapdata = null;
+</script><script>var import___packet_decoder_js = (function(exports) {var module={exports:exports};function decode_packet(buf, p, plen) {
+  if (plen < 1) return null;
+
+  // This pid is repeated as the binary complement.
+  var pid = buf[p] & 0xf, npid = (~buf[p] >> 4) & 0xf;
+
+  if (pid !== npid) return null;
+
+  var pid_type = pid & 0x3, pid_name = pid >> 2;
+
+  var res = {
+    pid_type: pid_type,
+    pid_name: pid_name};
+
+  switch (pid_type) {
+    case 0:
+      if (pid_name === 1) {  // PING, like a Token packet.
+        if (plen != 3) return null;
+        var r = buf[p+1] | buf[p+2] << 8;
+        res.ADDR = r & 0x7f;
+        res.EndPoint = (r >> 7) & 0xf;
+        res.CRC5 = (r >> 11) & 0x1f;
+      } else if (pid_name === 2) {
+        if (plen != 4) return null;
+        var r = buf[p+1] | buf[p+2] << 8 | buf[p+3] << 16;
+        res.HubAddr = r & 0x7f;
+        res.SC = (r >> 7) & 1;
+        r >>= 8;
+        res.Port = r & 0x7f;
+        res.S = (r >> 7) & 1;
+        res.EU = (r >> 8) & 1;
+        res.ET = (r >> 9) & 3;
+        res.CRC5 = (r >> 10) & 0x1f;
+      }
+      break;
+
+    // Token packets:
+    //   Sync PID ADDR ENDP CRC5 EOP
+    // Start of Frame Packets:
+    //   Sync PID Frame Number CRC5 EOP
+    case 1:
+      if (plen != 3) return null;
+      var r = buf[p+1] | buf[p+2] << 8;
+      if (pid_name === 1) {  // SOF
+        res.FrameNumber = r & 0x7ff;
+      } else {
+        res.ADDR = r & 0x7f;
+        res.EndPoint = (r >> 7) & 0xf;
+      }
+      res.CRC5 = (r >> 11) & 0x1f;
+      break;
+
+    // Handshake packets:
+    //   Sync PID EOP
+    case 2:
+      if (plen != 1) return null;
+      break;
+
+    // Data packets:
+    //   Sync PID Data CRC16 EOP
+    case 3:
+      if (plen < 3) return null;
+      res.data = buf.subarray(p+1, p+plen-2);
+      res.CRC16 = buf[p+plen-1] << 8 | buf[p+plen-2];
+      break;
+  }
+
+  return res;
+}
+
+try {
+  exports.decode_packet = decode_packet;
+} catch(e) { }
+ return module.exports;})({});;
+var import___usb_structs_js = (function(exports) {var module={exports:exports};function Fields() {
+  var fields = [ ];
+  this.add_field = function(name, size, val, display) {
+    fields.push(name, size, val, display);
+  };
+  this.get_value = function(name) {
+    for (var i = 0, il = fields.length; i < il; i += 4) {
+      if (fields[i] === name) return fields[i+2];
+    }
+    return undefined;
+  };
+  this.put_on_object = function(obj) {
+    for (var i = 0, il = fields.length; i < il; i += 4) {
+      obj[fields[i]] = fields[i+2];
+    }
+    return undefined;
+  };
+  this.num_fields = function() {
+    return fields.length >> 2;
+  };
+  this.get_name_at = function(i) {
+    return fields[i << 2];
+  };
+  this.get_size_at = function(i) {
+    return fields[i << 2 | 1];
+  };
+  this.get_value_at = function(i) {
+    return fields[i << 2 | 2];
+  };
+  this.get_display_at = function(i) {
+    return fields[i << 2 | 3];
+  };
+  this.set_display_at = function(i, v) {
+    fields[i << 2 | 3] = v;
+  };
+  this.debug_string = function(prefix) {
+    var ftext = '';
+    for (var i = 0, il = fields.length; i < il; i += 4) {
+      if (i !== 0) ftext += '\n';
+      ftext += prefix + fields[i] + ':' + fields[i+1] + ' 0x' + fields[i+2].toString(16);
+      if (fields[i+3] !== null) ftext += ' (' + fields[i+3] + ')';
+    }
+    return ftext;
+  };
+}
+
+var eRequestTypeRecipient = {0:"Device",1:"Interface",2:"Endpoint",3:"Other"};
+var eDescriptorTypes = {1:"DEVICE",2:"CONFIGURATION",3:"STRING",4:"INTERFACE",5:"ENDPOINT",6:"DEVICE_QUALIFIER",7:"OTHER_SPEED_CONFIGURATION",8:"INTERFACE_POWER"};
+var eRequestTypeType = {0:"Standard",1:"Class",2:"Vendor",3:"Reserved"};
+var eRequestTypeTransferDirection = {0:"HostToDevice",1:"DeviceToHost"};
+function parse_bmRequestType(f, b, s, e) {
+  if (s + 1 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1f; f.add_field("recipient", 5, val, eRequestTypeRecipient[val]);
+  r >>= 5;
+  val = r & 0x3; f.add_field("type", 2, val, eRequestTypeType[val]);
+  r >>= 2;
+  val = r & 0x1; f.add_field("transferDirection", 1, val, eRequestTypeTransferDirection[val]);
+  r >>= 1;
+  return true;
+}
+
+var eStandardDeviceRequests = {1:"D_CLEAR_FEATURE",3:"D_SET_FEATURE",5:"SET_ADDRESS",7:"SET_DESCRIPTOR",9:"SET_CONFIGURATION",257:"I_CLEAR_FEATURE",259:"I_SET_FEATURE",267:"SET_INTERFACE",513:"E_CLEAR_FEATURE",515:"E_SET_FEATURE",32768:"D_GET_STATUS",32774:"GET_DESCRIPTOR",32776:"GET_CONFIGURATION",33024:"I_GET_STATUS",33034:"GET_INTERFACE",33280:"E_GET_STATUS",33292:"SYNCH_FRAME"};
+var eClassSpecificRequests = {8193:"ClearHubFeature",8195:"SetHubFeature",8199:"SetHubDescriptor",8961:"ClearPortFeature",8963:"SetPortFeature",8968:"ClearTTBuffer",8969:"ResetTT",8971:"StopTT",40960:"GetHubStatus",40966:"GetHubDescriptor",41728:"GetPortStatus",41738:"GetTTState"};
+var eHubClassFeatureSelectorsHub = {0:"C_HUB_LOCAL_POWER",1:"C_HUB_OVER_CURRENT"};
+var eHubClassFeatureSelectorsPort = {0:"PORT_CONNECTION",1:"PORT_ENABLE",2:"PORT_SUSPEND",3:"PORT_OVER_CURRENT",4:"PORT_RESET",8:"PORT_POWER",9:"PORT_LOW_SPEED",16:"C_PORT_CONNECTION",17:"C_PORT_ENABLE",18:"C_PORT_SUSPEND",19:"C_PORT_OVER_CURRENT",20:"C_PORT_RESET",21:"PORT_TEST",22:"PORT_INDICATOR"};
+var eClassSpecificHIDRequests = {8457:"SET_REPORT",41217:"GET_REPORT"};
+function parse_setup(f, b, s, e) {
+  if (s + 8 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1f; f.add_field("bmRequestType.recipient", 5, val, eRequestTypeRecipient[val]);
+  r >>= 5;
+  val = r & 0x3; f.add_field("bmRequestType.type", 2, val, eRequestTypeType[val]);
+  r >>= 2;
+  val = r & 0x1; f.add_field("bmRequestType.transferDirection", 1, val, eRequestTypeTransferDirection[val]);
+  r >>= 1;
+  r |= b[s+1];
+  val = r & 0xff; f.add_field("bRequest", 8, val, null);
+  r >>= 8;
+  r |= b[s+2] | b[s+3] << 8;
+  val = r & 0xffff; f.add_field("wValue", 16, val, null);
+  r >>= 16;
+  r |= b[s+4] | b[s+5] << 8;
+  val = r & 0xffff; f.add_field("wIndex", 16, val, null);
+  r >>= 16;
+  r |= b[s+6] | b[s+7] << 8;
+  val = r & 0xffff; f.add_field("wLength", 16, val, null);
+  r >>= 16;
+  return true;
+}
+
+function parse_TokenPacket(f, b, s, e) {
+  if (s + 2 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x7f; f.add_field("ADDR", 7, val, null);
+  r >>= 7;
+  r |= b[s+1] << 1;
+  val = r & 0xf; f.add_field("EndPoint", 4, val, null);
+  r >>= 4;
+  val = r & 0x1f; f.add_field("CRC5", 5, val, null);
+  r >>= 5;
+  return true;
+}
+
+function parse_StartOfFramePacket(f, b, s, e) {
+  if (s + 2 > e) return false;
+  var val, r = 0;
+  r |= b[s+0] | b[s+1] << 8;
+  val = r & 0x7ff; f.add_field("FrameNumber", 11, val, null);
+  r >>= 11;
+  val = r & 0x1f; f.add_field("CRC5", 5, val, null);
+  r >>= 5;
+  return true;
+}
+
+function parse_StandardDeviceDescriptor(f, b, s, e) {
+  if (s + 18 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0xff; f.add_field("bLength", 8, val, null);
+  r >>= 8;
+  r |= b[s+1];
+  val = r & 0xff; f.add_field("bDescriptorType", 8, val, null);
+  r >>= 8;
+  r |= b[s+2] | b[s+3] << 8;
+  val = r & 0xffff; f.add_field("bcdUSB", 16, val, null);
+  r >>= 16;
+  r |= b[s+4];
+  val = r & 0xff; f.add_field("bDeviceClass", 8, val, null);
+  r >>= 8;
+  r |= b[s+5];
+  val = r & 0xff; f.add_field("bDeviceSubClass", 8, val, null);
+  r >>= 8;
+  r |= b[s+6];
+  val = r & 0xff; f.add_field("bDeviceProtocol", 8, val, null);
+  r >>= 8;
+  r |= b[s+7];
+  val = r & 0xff; f.add_field("bMaxPacketSize0", 8, val, null);
+  r >>= 8;
+  r |= b[s+8] | b[s+9] << 8;
+  val = r & 0xffff; f.add_field("idVendor", 16, val, null);
+  r >>= 16;
+  r |= b[s+10] | b[s+11] << 8;
+  val = r & 0xffff; f.add_field("idProduct", 16, val, null);
+  r >>= 16;
+  r |= b[s+12] | b[s+13] << 8;
+  val = r & 0xffff; f.add_field("bcdDevice", 16, val, null);
+  r >>= 16;
+  r |= b[s+14];
+  val = r & 0xff; f.add_field("iManufacturer", 8, val, null);
+  r >>= 8;
+  r |= b[s+15];
+  val = r & 0xff; f.add_field("iProduct", 8, val, null);
+  r >>= 8;
+  r |= b[s+16];
+  val = r & 0xff; f.add_field("iSerialNumber", 8, val, null);
+  r >>= 8;
+  r |= b[s+17];
+  val = r & 0xff; f.add_field("bNumConfigurations", 8, val, null);
+  r >>= 8;
+  return true;
+}
+
+function parse_StandardConfigurationDescriptorAttributes(f, b, s, e) {
+  if (s + 1 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1f; f.add_field("Reserved0", 5, val, null);
+  r >>= 5;
+  val = r & 0x1; f.add_field("RemoteWakeup", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("SelfPowered", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("Reserved1", 1, val, null);
+  r >>= 1;
+  return true;
+}
+
+function parse_StandardConfigurationDescriptor(f, b, s, e) {
+  if (s + 9 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0xff; f.add_field("bLength", 8, val, null);
+  r >>= 8;
+  r |= b[s+1];
+  val = r & 0xff; f.add_field("bDescriptorType", 8, val, null);
+  r >>= 8;
+  r |= b[s+2] | b[s+3] << 8;
+  val = r & 0xffff; f.add_field("wTotalLength", 16, val, null);
+  r >>= 16;
+  r |= b[s+4];
+  val = r & 0xff; f.add_field("bNumInterfaces", 8, val, null);
+  r >>= 8;
+  r |= b[s+5];
+  val = r & 0xff; f.add_field("bConfigurationValue", 8, val, null);
+  r >>= 8;
+  r |= b[s+6];
+  val = r & 0xff; f.add_field("iConfiguration", 8, val, null);
+  r >>= 8;
+  r |= b[s+7];
+  val = r & 0x1f; f.add_field("bmAttributes.Reserved0", 5, val, null);
+  r >>= 5;
+  val = r & 0x1; f.add_field("bmAttributes.RemoteWakeup", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("bmAttributes.SelfPowered", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("bmAttributes.Reserved1", 1, val, null);
+  r >>= 1;
+  r |= b[s+8];
+  val = r & 0xff; f.add_field("bMaxPower", 8, val, null);
+  r >>= 8;
+  return true;
+}
+
+var eInterfaceClass = {0:"DefinedAtInterfaceLevel",1:"Audio",2:"Communications",3:"HumanInterfaceDevice",5:"PhysicalInterfaceDevice",6:"Imaging",7:"Printer",8:"MassStorage",9:"Hub",10:"CDCData",11:"ChipSmartCard",13:"ContentSecurity",14:"Video",88:"Xbox",220:"Diagnostic",224:"Wireless",239:"MiscellaneousDevice",254:"ApplicationSpecificInterface",255:"VendorSpecificClass"};
+var eInterfaceSubclassAudio = {1:"ControlDevice",2:"Streaming",3:"MIDIStreaming"};
+var eInterfaceSubclassCommunications = {1:"DirectLine",2:"AbstractModem",3:"Telephone",4:"MultiChannel",5:"CAPIControl",6:"EthernetNetworking",7:"ATMNetworking",8:"WirelessHandsetControl",9:"DeviceManagement",10:"MobileDirectLine",11:"OBEX",12:"EthernetEmulation"};
+var eInterfaceSubclassCommunicationsProtocolAbstractModem = {0:"None",1:"ATCommandsV25ter",2:"ATCommandsPCCA101",3:"ATCommandsPCCA101Wakeup",4:"ATCommandsGSM",5:"ATCommands3G",6:"ATCommandsCDMA",254:"DefinedByCommandSetDescriptor",255:"VendorSpecificMSFTRNDIS"};
+var eInterfaceSubclassCommunicationsProtocolEthernetEmulation = {7:"EthernetEmulationEEM"};
+var eInterfaceSubclassHumanInterfaceDevice = {0:"NoSubclass",1:"BootInterfaceSubclass"};
+var eInterfaceSubclassHumanInterfaceDeviceProtocolNoSubclass = {0:"None",1:"Keyboard",2:"Mouse"};
+var eInterfaceSubclassHumanInterfaceDeviceProtocolBootInterfaceSubclass = {0:"None",1:"Keyboard",2:"Mouse"};
+var eInterfaceSubclassImaging = {1:"StillImageCapture"};
+var eInterfaceSubclassImagingProtocolStillImageCapture = {1:"PictureTransferProtocolPIMA15470"};
+var eInterfaceSubclassPrinter = {1:"Printer"};
+var eInterfaceSubclassPrinterProtocolPrinter = {0:"ReservedUndefined",1:"Unidirectional",2:"Bidirectional",3:"IEEE12844CompatibleBidirectional",255:"VendorSpecific"};
+var eInterfaceSubclassMassStorage = {1:"RBCTypicallyFlash",2:"SFF8020iMMC2ATAPI",3:"QIC157",4:"FloppyUFI",5:"SFF8070i",6:"SCSI"};
+var eInterfaceSubclassMassStorageProtocolRBCTypicallyFlash = {0:"ControlBulkInterrupt",1:"ControlBulk",80:"BulkOnly"};
+var eInterfaceSubclassMassStorageProtocolFloppyUFI = {0:"ControlBulkInterrupt",1:"ControlBulk",80:"BulkOnly"};
+var eInterfaceSubclassMassStorageProtocolSCSI = {0:"ControlBulkInterrupt",1:"ControlBulk",80:"BulkOnly"};
+var eInterfaceSubclassHub = {0:"Unused"};
+var eInterfaceSubclassHubProtocolUnused = {0:"FullSpeedOrRootHub",1:"SingleTT",2:"TTPerPort"};
+var eInterfaceSubclassCDCData = {0:"Unused"};
+var eInterfaceSubclassCDCDataProtocolUnused = {48:"I430ISDNBRI",49:"HDLC",50:"Transparent",80:"Q921M",81:"Q921",82:"Q921TM",144:"V42bis",145:"Q932EuroISDN",146:"V120V24RateISDN",147:"CAPI20",253:"HostBasedDriver",254:"CDCPUF",255:"VendorSpecific"};
+var eInterfaceSubclassVideo = {0:"Undefined",1:"VideoControl",2:"VideoStreaming",3:"VideoInterfaceCollection"};
+var eInterfaceSubclassXbox = {66:"Controller"};
+var eInterfaceSubclassDiagnostic = {1:"ReprogrammableDiagnostics"};
+var eInterfaceSubclassDiagnosticProtocolReprogrammableDiagnostics = {1:"USB2Compliance"};
+var eInterfaceSubclassWireless = {1:"RadioFrequency",2:"WirelessUSBWireAdapter"};
+var eInterfaceSubclassWirelessProtocolRadioFrequency = {1:"Bluetooth",2:"UltraWideBandRadioControl",3:"RNDIS"};
+var eInterfaceSubclassWirelessProtocolWirelessUSBWireAdapter = {1:"HostWireAdapterControlDataStreaming",2:"DeviceWireAdapterControlDataStreaming",3:"DeviceWireAdapterIsochronousStreaming"};
+var eInterfaceSubclassMiscellaneousDevice = {1:"Unknown1",2:"Unknown2",3:"Unknown3",5:"USB3Vision"};
+var eInterfaceSubclassMiscellaneousDeviceProtocolUnknown1 = {1:"MicrosoftActiveSync",2:"PalmSync"};
+var eInterfaceSubclassMiscellaneousDeviceProtocolUnknown2 = {1:"InterfaceAssociation",2:"WireAdapterMultifunctionPeripheral"};
+var eInterfaceSubclassMiscellaneousDeviceProtocolUnknown3 = {1:"CableBasedAssociation"};
+var eInterfaceSubclassApplicationSpecificInterface = {1:"DeviceFirmwareUpdate",2:"IRDABridge",3:"TestAndMeasurement"};
+var eInterfaceSubclassApplicationSpecificInterfaceProtocolTestAndMeasurement = {1:"TMC",2:"USB488"};
+var eInterfaceSubclassVendorSpecificClass = {255:"VendorSpecificSubclass"};
+var eInterfaceSubclassVendorSpecificClassProtocolVendorSpecificSubclass = {255:"VendorSpecificProtocol"};
+function parse_StandardInterfaceDescriptor(f, b, s, e) {
+  if (s + 9 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0xff; f.add_field("bLength", 8, val, null);
+  r >>= 8;
+  r |= b[s+1];
+  val = r & 0xff; f.add_field("bDescriptorType", 8, val, null);
+  r >>= 8;
+  r |= b[s+2];
+  val = r & 0xff; f.add_field("bInterfaceNumber", 8, val, null);
+  r >>= 8;
+  r |= b[s+3];
+  val = r & 0xff; f.add_field("bAlternateSetting", 8, val, null);
+  r >>= 8;
+  r |= b[s+4];
+  val = r & 0xff; f.add_field("bNumEndpoints", 8, val, null);
+  r >>= 8;
+  r |= b[s+5];
+  val = r & 0xff; f.add_field("bInterfaceClass", 8, val, eInterfaceClass[val]);
+  r >>= 8;
+  r |= b[s+6];
+  val = r & 0xff; f.add_field("bInterfaceSubClass", 8, val, null);
+  r >>= 8;
+  r |= b[s+7];
+  val = r & 0xff; f.add_field("bInterfaceProtocol", 8, val, null);
+  r >>= 8;
+  r |= b[s+8];
+  val = r & 0xff; f.add_field("iInterface", 8, val, null);
+  r >>= 8;
+  return true;
+}
+
+var eStandardEndpointDescriptorAttributesTransferType = {0:"Control",1:"Isochronous",2:"Bulk",3:"Interrupt"};
+var eStandardEndpointDescriptorAttributesSynchronizationType = {0:"NoSynchronization",1:"Asynchronous",2:"Adaptive",3:"Synchronous"};
+var eStandardEndpointDescriptorAttributesUsageType = {0:"DataEndpoint",1:"FeedbackEndpoint",2:"ImplicitFeedbackDataEndpoint",3:"Reserved"};
+function parse_StandardEndpointDescriptorAttributes(f, b, s, e) {
+  if (s + 1 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x3; f.add_field("TransferType", 2, val, eStandardEndpointDescriptorAttributesTransferType[val]);
+  r >>= 2;
+  val = r & 0x3; f.add_field("SynchronizationType", 2, val, eStandardEndpointDescriptorAttributesSynchronizationType[val]);
+  r >>= 2;
+  val = r & 0x3; f.add_field("UsageType", 2, val, eStandardEndpointDescriptorAttributesUsageType[val]);
+  r >>= 2;
+  val = r & 0x3; f.add_field("Reserved", 2, val, null);
+  r >>= 2;
+  return true;
+}
+
+var eStandardEndpointDescriptorEndpointAddressDirection = {0:"OUT",1:"IN"};
+function parse_StandardEndpointDescriptorEndpointAddress(f, b, s, e) {
+  if (s + 1 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0xf; f.add_field("EndpointNumber", 4, val, null);
+  r >>= 4;
+  val = r & 0x7; f.add_field("Reserved", 3, val, null);
+  r >>= 3;
+  val = r & 0x1; f.add_field("Direction", 1, val, eStandardEndpointDescriptorEndpointAddressDirection[val]);
+  r >>= 1;
+  return true;
+}
+
+function parse_StandardEndpointDescriptor(f, b, s, e) {
+  if (s + 7 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0xff; f.add_field("bLength", 8, val, null);
+  r >>= 8;
+  r |= b[s+1];
+  val = r & 0xff; f.add_field("bDescriptorType", 8, val, null);
+  r >>= 8;
+  r |= b[s+2];
+  val = r & 0xf; f.add_field("bEndpointAddress.EndpointNumber", 4, val, null);
+  r >>= 4;
+  val = r & 0x7; f.add_field("bEndpointAddress.Reserved", 3, val, null);
+  r >>= 3;
+  val = r & 0x1; f.add_field("bEndpointAddress.Direction", 1, val, eStandardEndpointDescriptorEndpointAddressDirection[val]);
+  r >>= 1;
+  r |= b[s+3];
+  val = r & 0x3; f.add_field("bmAttributes.TransferType", 2, val, eStandardEndpointDescriptorAttributesTransferType[val]);
+  r >>= 2;
+  val = r & 0x3; f.add_field("bmAttributes.SynchronizationType", 2, val, eStandardEndpointDescriptorAttributesSynchronizationType[val]);
+  r >>= 2;
+  val = r & 0x3; f.add_field("bmAttributes.UsageType", 2, val, eStandardEndpointDescriptorAttributesUsageType[val]);
+  r >>= 2;
+  val = r & 0x3; f.add_field("bmAttributes.Reserved", 2, val, null);
+  r >>= 2;
+  r |= b[s+4];
+  val = r & 0xff; f.add_field("wMaxPacketSize", 8, val, null);
+  r >>= 8;
+  r |= b[s+5];
+  val = r & 0xff; f.add_field("bInterval", 8, val, null);
+  r >>= 8;
+  r |= b[s+6];
+  val = r & 0xff; f.add_field("bLength", 8, val, null);
+  r >>= 8;
+  return true;
+}
+
+function parse_HubDescriptorHeader(f, b, s, e) {
+  if (s + 7 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0xff; f.add_field("bDescLength", 8, val, null);
+  r >>= 8;
+  r |= b[s+1];
+  val = r & 0xff; f.add_field("bDescriptorType", 8, val, null);
+  r >>= 8;
+  r |= b[s+2];
+  val = r & 0xff; f.add_field("bNbrPorts", 8, val, null);
+  r >>= 8;
+  r |= b[s+3] | b[s+4] << 8;
+  val = r & 0xffff; f.add_field("wHubCharacteristics", 16, val, null);
+  r >>= 16;
+  r |= b[s+5];
+  val = r & 0xff; f.add_field("bPwrOn2PwrGood", 8, val, null);
+  r >>= 8;
+  r |= b[s+6];
+  val = r & 0xff; f.add_field("bHubContrCurrent", 8, val, null);
+  r >>= 8;
+  return true;
+}
+
+var eHubStatusHubStatusLocalPowerSource = {0:"Good",1:"Lost"};
+var eHubStatusHubStatusOverCurrent = {0:"NoOverCurrent",1:"OverCurrent"};
+function parse_HubStatusHubStatus(f, b, s, e) {
+  if (s + 2 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1; f.add_field("LocalPowerSource", 1, val, eHubStatusHubStatusLocalPowerSource[val]);
+  r >>= 1;
+  val = r & 0x1; f.add_field("OverCurrent", 1, val, eHubStatusHubStatusOverCurrent[val]);
+  r >>= 1;
+  r |= b[s+1] << 6;
+  val = r & 0x3fff; f.add_field("Reserved", 14, val, null);
+  r >>= 14;
+  return true;
+}
+
+function parse_HubStatusHubChange(f, b, s, e) {
+  if (s + 2 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1; f.add_field("LocalPowerStatusChange", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("OverCurrentChange", 1, val, null);
+  r >>= 1;
+  r |= b[s+1] << 6;
+  val = r & 0x3fff; f.add_field("Reserved", 14, val, null);
+  r >>= 14;
+  return true;
+}
+
+function parse_HubStatus(f, b, s, e) {
+  if (s + 4 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1; f.add_field("wHubStatus.LocalPowerSource", 1, val, eHubStatusHubStatusLocalPowerSource[val]);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wHubStatus.OverCurrent", 1, val, eHubStatusHubStatusOverCurrent[val]);
+  r >>= 1;
+  r |= b[s+1] << 6;
+  val = r & 0x3fff; f.add_field("wHubStatus.Reserved", 14, val, null);
+  r >>= 14;
+  r |= b[s+2];
+  val = r & 0x1; f.add_field("wHubChange.LocalPowerStatusChange", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wHubChange.OverCurrentChange", 1, val, null);
+  r >>= 1;
+  r |= b[s+3] << 6;
+  val = r & 0x3fff; f.add_field("wHubChange.Reserved", 14, val, null);
+  r >>= 14;
+  return true;
+}
+
+function parse_HubPortStatusPortStatus(f, b, s, e) {
+  if (s + 2 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1; f.add_field("Connection", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("Enabled", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("Suspended", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("OverCurrent", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("Reset", 1, val, null);
+  r >>= 1;
+  val = r & 0x7; f.add_field("Reserved0", 3, val, null);
+  r >>= 3;
+  r |= b[s+1];
+  val = r & 0x1; f.add_field("Power", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("LowSpeed", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("HighSpeed", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("Test", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("Indicator", 1, val, null);
+  r >>= 1;
+  val = r & 0x7; f.add_field("Reserved1", 3, val, null);
+  r >>= 3;
+  return true;
+}
+
+function parse_HubPortStatus(f, b, s, e) {
+  if (s + 4 > e) return false;
+  var val, r = 0;
+  r |= b[s+0];
+  val = r & 0x1; f.add_field("wPortStatus.Connection", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.Enabled", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.Suspended", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.OverCurrent", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.Reset", 1, val, null);
+  r >>= 1;
+  val = r & 0x7; f.add_field("wPortStatus.Reserved0", 3, val, null);
+  r >>= 3;
+  r |= b[s+1];
+  val = r & 0x1; f.add_field("wPortStatus.Power", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.LowSpeed", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.HighSpeed", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.Test", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortStatus.Indicator", 1, val, null);
+  r >>= 1;
+  val = r & 0x7; f.add_field("wPortStatus.Reserved1", 3, val, null);
+  r >>= 3;
+  r |= b[s+2];
+  val = r & 0x1; f.add_field("wPortChange.Connection", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.Enabled", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.Suspended", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.OverCurrent", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.Reset", 1, val, null);
+  r >>= 1;
+  val = r & 0x7; f.add_field("wPortChange.Reserved0", 3, val, null);
+  r >>= 3;
+  r |= b[s+3];
+  val = r & 0x1; f.add_field("wPortChange.Power", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.LowSpeed", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.HighSpeed", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.Test", 1, val, null);
+  r >>= 1;
+  val = r & 0x1; f.add_field("wPortChange.Indicator", 1, val, null);
+  r >>= 1;
+  val = r & 0x7; f.add_field("wPortChange.Reserved1", 3, val, null);
+  r >>= 3;
+  return true;
+}
+
+try {
+  exports.Fields = Fields;
+  exports.eRequestTypeRecipient = eRequestTypeRecipient;
+  exports.eDescriptorTypes = eDescriptorTypes;
+  exports.eRequestTypeType = eRequestTypeType;
+  exports.eRequestTypeTransferDirection = eRequestTypeTransferDirection;
+  exports.parse_bmRequestType = parse_bmRequestType;
+  exports.eStandardDeviceRequests = eStandardDeviceRequests;
+  exports.eClassSpecificRequests = eClassSpecificRequests;
+  exports.eHubClassFeatureSelectorsHub = eHubClassFeatureSelectorsHub;
+  exports.eHubClassFeatureSelectorsPort = eHubClassFeatureSelectorsPort;
+  exports.eClassSpecificHIDRequests = eClassSpecificHIDRequests;
+  exports.parse_setup = parse_setup;
+  exports.parse_TokenPacket = parse_TokenPacket;
+  exports.parse_StartOfFramePacket = parse_StartOfFramePacket;
+  exports.parse_StandardDeviceDescriptor = parse_StandardDeviceDescriptor;
+  exports.parse_StandardConfigurationDescriptorAttributes = parse_StandardConfigurationDescriptorAttributes;
+  exports.parse_StandardConfigurationDescriptor = parse_StandardConfigurationDescriptor;
+  exports.eInterfaceClass = eInterfaceClass;
+  exports.eInterfaceSubclassAudio = eInterfaceSubclassAudio;
+  exports.eInterfaceSubclassCommunications = eInterfaceSubclassCommunications;
+  exports.eInterfaceSubclassCommunicationsProtocolAbstractModem = eInterfaceSubclassCommunicationsProtocolAbstractModem;
+  exports.eInterfaceSubclassCommunicationsProtocolEthernetEmulation = eInterfaceSubclassCommunicationsProtocolEthernetEmulation;
+  exports.eInterfaceSubclassHumanInterfaceDevice = eInterfaceSubclassHumanInterfaceDevice;
+  exports.eInterfaceSubclassHumanInterfaceDeviceProtocolNoSubclass = eInterfaceSubclassHumanInterfaceDeviceProtocolNoSubclass;
+  exports.eInterfaceSubclassHumanInterfaceDeviceProtocolBootInterfaceSubclass = eInterfaceSubclassHumanInterfaceDeviceProtocolBootInterfaceSubclass;
+  exports.eInterfaceSubclassImaging = eInterfaceSubclassImaging;
+  exports.eInterfaceSubclassImagingProtocolStillImageCapture = eInterfaceSubclassImagingProtocolStillImageCapture;
+  exports.eInterfaceSubclassPrinter = eInterfaceSubclassPrinter;
+  exports.eInterfaceSubclassPrinterProtocolPrinter = eInterfaceSubclassPrinterProtocolPrinter;
+  exports.eInterfaceSubclassMassStorage = eInterfaceSubclassMassStorage;
+  exports.eInterfaceSubclassMassStorageProtocolRBCTypicallyFlash = eInterfaceSubclassMassStorageProtocolRBCTypicallyFlash;
+  exports.eInterfaceSubclassMassStorageProtocolFloppyUFI = eInterfaceSubclassMassStorageProtocolFloppyUFI;
+  exports.eInterfaceSubclassMassStorageProtocolSCSI = eInterfaceSubclassMassStorageProtocolSCSI;
+  exports.eInterfaceSubclassHub = eInterfaceSubclassHub;
+  exports.eInterfaceSubclassHubProtocolUnused = eInterfaceSubclassHubProtocolUnused;
+  exports.eInterfaceSubclassCDCData = eInterfaceSubclassCDCData;
+  exports.eInterfaceSubclassCDCDataProtocolUnused = eInterfaceSubclassCDCDataProtocolUnused;
+  exports.eInterfaceSubclassVideo = eInterfaceSubclassVideo;
+  exports.eInterfaceSubclassXbox = eInterfaceSubclassXbox;
+  exports.eInterfaceSubclassDiagnostic = eInterfaceSubclassDiagnostic;
+  exports.eInterfaceSubclassDiagnosticProtocolReprogrammableDiagnostics = eInterfaceSubclassDiagnosticProtocolReprogrammableDiagnostics;
+  exports.eInterfaceSubclassWireless = eInterfaceSubclassWireless;
+  exports.eInterfaceSubclassWirelessProtocolRadioFrequency = eInterfaceSubclassWirelessProtocolRadioFrequency;
+  exports.eInterfaceSubclassWirelessProtocolWirelessUSBWireAdapter = eInterfaceSubclassWirelessProtocolWirelessUSBWireAdapter;
+  exports.eInterfaceSubclassMiscellaneousDevice = eInterfaceSubclassMiscellaneousDevice;
+  exports.eInterfaceSubclassMiscellaneousDeviceProtocolUnknown1 = eInterfaceSubclassMiscellaneousDeviceProtocolUnknown1;
+  exports.eInterfaceSubclassMiscellaneousDeviceProtocolUnknown2 = eInterfaceSubclassMiscellaneousDeviceProtocolUnknown2;
+  exports.eInterfaceSubclassMiscellaneousDeviceProtocolUnknown3 = eInterfaceSubclassMiscellaneousDeviceProtocolUnknown3;
+  exports.eInterfaceSubclassApplicationSpecificInterface = eInterfaceSubclassApplicationSpecificInterface;
+  exports.eInterfaceSubclassApplicationSpecificInterfaceProtocolTestAndMeasurement = eInterfaceSubclassApplicationSpecificInterfaceProtocolTestAndMeasurement;
+  exports.eInterfaceSubclassVendorSpecificClass = eInterfaceSubclassVendorSpecificClass;
+  exports.eInterfaceSubclassVendorSpecificClassProtocolVendorSpecificSubclass = eInterfaceSubclassVendorSpecificClassProtocolVendorSpecificSubclass;
+  exports.parse_StandardInterfaceDescriptor = parse_StandardInterfaceDescriptor;
+  exports.eStandardEndpointDescriptorAttributesTransferType = eStandardEndpointDescriptorAttributesTransferType;
+  exports.eStandardEndpointDescriptorAttributesSynchronizationType = eStandardEndpointDescriptorAttributesSynchronizationType;
+  exports.eStandardEndpointDescriptorAttributesUsageType = eStandardEndpointDescriptorAttributesUsageType;
+  exports.parse_StandardEndpointDescriptorAttributes = parse_StandardEndpointDescriptorAttributes;
+  exports.eStandardEndpointDescriptorEndpointAddressDirection = eStandardEndpointDescriptorEndpointAddressDirection;
+  exports.parse_StandardEndpointDescriptorEndpointAddress = parse_StandardEndpointDescriptorEndpointAddress;
+  exports.parse_StandardEndpointDescriptor = parse_StandardEndpointDescriptor;
+  exports.parse_HubDescriptorHeader = parse_HubDescriptorHeader;
+  exports.eHubStatusHubStatusLocalPowerSource = eHubStatusHubStatusLocalPowerSource;
+  exports.eHubStatusHubStatusOverCurrent = eHubStatusHubStatusOverCurrent;
+  exports.parse_HubStatusHubStatus = parse_HubStatusHubStatus;
+  exports.parse_HubStatusHubChange = parse_HubStatusHubChange;
+  exports.parse_HubStatus = parse_HubStatus;
+  exports.parse_HubPortStatusPortStatus = parse_HubPortStatusPortStatus;
+  exports.parse_HubPortStatus = parse_HubPortStatus;
+} catch(e) { }
+ return module.exports;})({});;
+var import___usb_states_js = (function(exports) {var module={exports:exports};// This code is autogenerated from usb.states
+
+var usb_structs = import___usb_structs_js;
+
+var kPass = { }, kEnd = { };
+
+function SetupTransaction() {
+  this.ADDR = undefined;
+  this.ADDR_m = undefined;
+  this.EndPoint = undefined;
+  this.EndPoint_m = undefined;
+  this.setup = undefined;
+  this.setup_m = undefined;
+}
+
+function state_SetupTransaction_setup_run0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 0 && _pp.ET === 0) {
+      _cb.spawn("setup_run", "transaction", "SetupTransaction", _state);
+      return {next: state_SetupTransaction_ssplit_setup2(_pp.HubAddr, _pp.Port), next_name: "transaction::ssplit_setup", do_break: false};
+    }
+    if (_pp.pid_type === 1 && _pp.pid_name === 3) {
+      _cb.spawn("setup_run", "transaction", "SetupTransaction", _state);
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_SetupTransaction_setup_data0(), next_name: "transaction::setup_data", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_ssplit_setup2(hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 3) {
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_SetupTransaction_ssplit_setup_data4(_pp.ADDR, _pp.EndPoint, hub, port), next_name: "transaction::ssplit_setup_data", do_break: true};
+    }
+    if (1) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "SetupTransaction", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_setup_data0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    var setup = new usb_structs.Fields();
+    if (_pp.pid_type === 3 && _pp.pid_name === 0 && _pp.data.length === 8 && usb_structs.parse_setup(setup, _pp.data, 0, _pp.data.length)) {
+      _out.setup = setup; _out.setup_m = _meta;
+      return {next: state_SetupTransaction_setup_ack0(), next_name: "transaction::setup_ack", do_break: false};
+    }
+    _cb.emit("transaction", "SetupTransaction", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_ssplit_setup_data4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    var setup = new usb_structs.Fields();
+    if (_pp.pid_type === 3 && _pp.pid_name === 0 && _pp.data.length === 8 && usb_structs.parse_setup(setup, _pp.data, 0, _pp.data.length)) {
+      _out.setup = setup; _out.setup_m = _meta;
+      return {next: state_SetupTransaction_ssplit_setup_ack4(addr, endp, hub, port), next_name: "transaction::ssplit_setup_ack", do_break: false};
+    }
+    _cb.emit("transaction", "SetupTransaction", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_ssplit_setup_ack4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      return {next: state_SetupTransaction_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    _cb.emit("transaction", "SetupTransaction", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_csplit4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 1 && _pp.ET === 0 && _pp.HubAddr === hub && _pp.Port === port) {
+      return {next: state_SetupTransaction_csplit_setup4(addr, endp, hub, port), next_name: "transaction::csplit_setup", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_csplit_setup4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 3 && _pp.ADDR === addr && _pp.EndPoint === endp) {
+      return {next: state_SetupTransaction_csplit_handshake4(addr, endp, hub, port), next_name: "transaction::csplit_handshake", do_break: true};
+    }
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_csplit_handshake4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 1) {
+      _state.packets.pop();
+      _state.packets.pop();
+      _state.packets.pop();
+      return {next: state_SetupTransaction_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      _cb.emit("transaction", "SetupTransaction", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "SetupTransaction", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_SetupTransaction_setup_ack0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      _cb.emit("transaction", "SetupTransaction", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "SetupTransaction", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+
+function BulkTransactionIn() {
+  this.ADDR = undefined;
+  this.ADDR_m = undefined;
+  this.EndPoint = undefined;
+  this.EndPoint_m = undefined;
+  this.data = undefined;
+  this.data_m = undefined;
+}
+
+function state_BulkTransactionIn_bulkin_run0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if ((_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 0 && _pp.ET === 0) ||
+        (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 0 && _pp.ET === 2)) {
+      _cb.spawn("bulkin_run", "transaction", "BulkTransactionIn", _state);
+      return {next: state_BulkTransactionIn_ssplit_in2(_pp.HubAddr, _pp.Port), next_name: "transaction::ssplit_in", do_break: false};
+    }
+    if (_pp.pid_type === 1 && _pp.pid_name === 2) {
+      _cb.spawn("bulkin_run", "transaction", "BulkTransactionIn", _state);
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_BulkTransactionIn_bulkin_data0(), next_name: "transaction::bulkin_data", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_ssplit_in2(hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 2) {
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_BulkTransactionIn_ssplit_ack4(_pp.ADDR, _pp.EndPoint, hub, port), next_name: "transaction::ssplit_ack", do_break: true};
+    }
+    if (1) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_ssplit_ack4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      return {next: state_BulkTransactionIn_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_csplit4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if ((_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 1 && _pp.ET === 0 && _pp.HubAddr === hub && _pp.Port === port) ||
+        (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 1 && _pp.ET === 2 && _pp.HubAddr === hub && _pp.Port === port)) {
+      return {next: state_BulkTransactionIn_csplit_in4(addr, endp, hub, port), next_name: "transaction::csplit_in", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_csplit_in4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 2 && _pp.ADDR === addr && _pp.EndPoint === endp) {
+      return {next: state_BulkTransactionIn_csplit_data4(addr, endp, hub, port), next_name: "transaction::csplit_data", do_break: true};
+    }
+    if (1) {
+      return {next: state_BulkTransactionIn_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_csplit_data4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 2) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    if (_pp.pid_type === 2 && _pp.pid_name === 1) {
+      _state.packets.pop();
+      _state.packets.pop();
+      _state.packets.pop();
+      return {next: state_BulkTransactionIn_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    if (_pp.pid_type === 3 /* DATA */) {
+      _out.data = _pp.data; _out.data_m = _meta;
+      _cb.emit("transaction", "BulkTransactionIn", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_bulkin_data0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 2) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    if (_pp.pid_type === 3 /* DATA */) {
+      _out.data = _pp.data; _out.data_m = _meta;
+      return {next: state_BulkTransactionIn_bulkin_ack0(), next_name: "transaction::bulkin_ack", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionIn_bulkin_ack0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      _cb.emit("transaction", "BulkTransactionIn", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+
+function BulkTransactionOut() {
+  this.ADDR = undefined;
+  this.ADDR_m = undefined;
+  this.EndPoint = undefined;
+  this.EndPoint_m = undefined;
+  this.data = undefined;
+  this.data_m = undefined;
+}
+
+function state_BulkTransactionOut_bulkout_run0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if ((_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 0 && _pp.ET === 0) ||
+        (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 0 && _pp.ET === 2)) {
+      _cb.spawn("bulkout_run", "transaction", "BulkTransactionOut", _state);
+      return {next: state_BulkTransactionOut_ssplit_out2(_pp.HubAddr, _pp.Port), next_name: "transaction::ssplit_out", do_break: false};
+    }
+    if (_pp.pid_type === 1 && _pp.pid_name === 0) {
+      _cb.spawn("bulkout_run", "transaction", "BulkTransactionOut", _state);
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_BulkTransactionOut_bulkout_data0(), next_name: "transaction::bulkout_data", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_ssplit_out2(hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 0) {
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_BulkTransactionOut_ssplit_data4(_pp.ADDR, _pp.EndPoint, hub, port), next_name: "transaction::ssplit_data", do_break: true};
+    }
+    if (1) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_ssplit_data4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 3 /* DATA */) {
+      _out.data = _pp.data; _out.data_m = _meta;
+      return {next: state_BulkTransactionOut_ssplit_ack4(addr, endp, hub, port), next_name: "transaction::ssplit_ack", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_ssplit_ack4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      return {next: state_BulkTransactionOut_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_csplit4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if ((_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 1 && _pp.ET === 0 && _pp.HubAddr === hub && _pp.Port === port) ||
+        (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 1 && _pp.ET === 2 && _pp.HubAddr === hub && _pp.Port === port)) {
+      return {next: state_BulkTransactionOut_csplit_out4(addr, endp, hub, port), next_name: "transaction::csplit_out", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_csplit_out4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 0 && _pp.ADDR === addr && _pp.EndPoint === endp) {
+      return {next: state_BulkTransactionOut_csplit_ack4(addr, endp, hub, port), next_name: "transaction::csplit_ack", do_break: true};
+    }
+    if (1) {
+      return {next: state_BulkTransactionOut_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_csplit_ack4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 1) {
+      _state.packets.pop();
+      _state.packets.pop();
+      _state.packets.pop();
+      return {next: state_BulkTransactionOut_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      _cb.emit("transaction", "BulkTransactionOut", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_bulkout_data0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 3 /* DATA */) {
+      _out.data = _pp.data; _out.data_m = _meta;
+      return {next: state_BulkTransactionOut_bulkout_ack0(), next_name: "transaction::bulkout_ack", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_BulkTransactionOut_bulkout_ack0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 0) {
+      _cb.emit("transaction", "BulkTransactionOut", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "BulkTransactionOut", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+
+function InterruptTransactionIn() {
+  this.ADDR = undefined;
+  this.ADDR_m = undefined;
+  this.EndPoint = undefined;
+  this.EndPoint_m = undefined;
+  this.data = undefined;
+  this.data_m = undefined;
+}
+
+function state_InterruptTransactionIn_run0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 0 && _pp.ET === 3) {
+      _cb.spawn("run", "transaction", "InterruptTransactionIn", _state);
+      return {next: state_InterruptTransactionIn_ssplit_in2(_pp.HubAddr, _pp.Port), next_name: "transaction::ssplit_in", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_InterruptTransactionIn_ssplit_in2(hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 2) {
+      _out.ADDR = _pp.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.EndPoint; _out.EndPoint_m = _meta;
+      return {next: state_InterruptTransactionIn_csplit4(_pp.ADDR, _pp.EndPoint, hub, port), next_name: "transaction::csplit", do_break: true};
+    }
+    if (1) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "InterruptTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_InterruptTransactionIn_csplit4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 0 && _pp.pid_name === 2 && _pp.SC === 1 && _pp.ET === 3 && _pp.HubAddr === hub && _pp.Port === port) {
+      return {next: state_InterruptTransactionIn_csplit_in4(addr, endp, hub, port), next_name: "transaction::csplit_in", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_InterruptTransactionIn_csplit_in4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 1 && _pp.pid_name === 2 && _pp.ADDR === addr && _pp.EndPoint === endp) {
+      return {next: state_InterruptTransactionIn_csplit_data4(addr, endp, hub, port), next_name: "transaction::csplit_data", do_break: true};
+    }
+    if (1) {
+      return {next: state_InterruptTransactionIn_csplit4(addr, endp, hub, port), next_name: "transaction::csplit", do_break: false};
+    }
+    _cb.emit("transaction", "InterruptTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+function state_InterruptTransactionIn_csplit_data4(addr, endp, hub, port) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.pid_type === 2 && _pp.pid_name === 2) {
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    if ((_pp.pid_type === 3 && _pp.pid_name === 0) ||
+        (_pp.pid_type === 3 && _pp.pid_name === 2)) {
+      _out.data = _pp.data; _out.data_m = _meta;
+      _cb.emit("transaction", "InterruptTransactionIn", true, _out, _state);
+      return {next: kEnd, next_name: "transaction::kEnd", do_break: false};
+    }
+    _cb.emit("transaction", "InterruptTransactionIn", false, _out, _state);
+    return {next: kEnd, next_name: "kEnd"};
+    return {next: kPass};
+  };
+}
+
+function ControlTransfer() {
+  this.ADDR = undefined;
+  this.ADDR_m = undefined;
+  this.EndPoint = undefined;
+  this.EndPoint_m = undefined;
+  this.setup = undefined;
+  this.setup_m = undefined;
+  this.data = undefined;
+  this.data_m = undefined;
+}
+
+function state_ControlTransfer_ct_run0() {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.typename === "SetupTransaction") {
+      _out.ADDR = _pp.out.ADDR; _out.ADDR_m = _meta;
+      _out.EndPoint = _pp.out.EndPoint; _out.EndPoint_m = _meta;
+      _out.setup = _pp.out.setup; _out.setup_m = _meta;
+      if (_pp.out.setup.get_value("bmRequestType.transferDirection") === 0) {
+        _cb.spawn("ct_run", "transfer", "ControlTransfer", _state);
+        return {next: state_ControlTransfer_ct_dataout04(_pp.out.ADDR, _pp.out.EndPoint, _pp.out.setup.get_value("wLength"), [ ]), next_name: "transfer::ct_dataout0", do_break: false};
+      }
+      if (_pp.out.setup.get_value("bmRequestType.transferDirection") === 1) {
+        _cb.spawn("ct_run", "transfer", "ControlTransfer", _state);
+        return {next: state_ControlTransfer_ct_datain04(_pp.out.ADDR, _pp.out.EndPoint, _pp.out.setup.get_value("wLength"), [ ]), next_name: "transfer::ct_datain0", do_break: false};
+      }
+      _cb.emit("transfer", "ControlTransfer", false, _out, _state);
+      return {next: kEnd, next_name: "kEnd"};
+      return {next: kPass, next_name: "transfer::kPass", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_ControlTransfer_ct_datain04(addr, endp, bytes_left, bytes) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.out.ADDR === addr && _pp.out.EndPoint === endp) {
+      if (bytes_left === 0) {
+        if (_pp.typename === "BulkTransactionOut" && _pp.out.data.length === 0) {
+          _out.data = bytes; _out.data_m = _meta;
+          _cb.emit("transfer", "ControlTransfer", true, _out, _state);
+          return {next: kEnd, next_name: "transfer::kEnd", do_break: false};
+        }
+        _cb.emit("transfer", "ControlTransfer", false, _out, _state);
+        return {next: kEnd, next_name: "kEnd"};
+        return {next: kPass, next_name: "transfer::kPass", do_break: false};
+      }
+      if (_pp.typename === "BulkTransactionOut" && _pp.out.data.length === 0) {
+        _out.data = bytes; _out.data_m = _meta;
+        _cb.emit("transfer", "ControlTransfer", true, _out, _state);
+        return {next: kEnd, next_name: "transfer::kEnd", do_break: false};
+      }
+      if (_pp.typename === "BulkTransactionIn") {
+        bytes_left -= _pp.out.data.length;
+        bytes = bytes.concat([_pp.out.data, _meta]);
+        _out.data = bytes; _out.data_m = _meta;
+        return {next: state_ControlTransfer_ct_datain04(addr, endp, bytes_left, bytes), next_name: "transfer::ct_datain0", do_break: false};
+      }
+      _cb.emit("transfer", "ControlTransfer", false, _out, _state);
+      return {next: kEnd, next_name: "kEnd"};
+      return {next: kPass, next_name: "transfer::kPass", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+function state_ControlTransfer_ct_dataout04(addr, endp, bytes_left, bytes) {
+  return function(_pp, _out, _meta, _state, _cb) {
+    if (_pp.out.ADDR === addr && _pp.out.EndPoint === endp) {
+      if (bytes_left === 0) {
+        if (_pp.typename === "BulkTransactionIn" && _pp.out.data.length === 0) {
+          _out.data = bytes; _out.data_m = _meta;
+          _cb.emit("transfer", "ControlTransfer", true, _out, _state);
+          return {next: kEnd, next_name: "transfer::kEnd", do_break: false};
+        }
+        _cb.emit("transfer", "ControlTransfer", false, _out, _state);
+        return {next: kEnd, next_name: "kEnd"};
+        return {next: kPass, next_name: "transfer::kPass", do_break: false};
+      }
+      if (_pp.typename === "BulkTransactionOut") {
+        bytes_left -= _pp.out.data.length;
+        bytes = bytes.concat([_pp.out.data, _meta]);
+        _out.data = bytes; _out.data_m = _meta;
+        return {next: state_ControlTransfer_ct_dataout04(addr, endp, bytes_left, bytes), next_name: "transfer::ct_dataout0", do_break: false};
+      }
+      _cb.emit("transfer", "ControlTransfer", false, _out, _state);
+      return {next: kEnd, next_name: "kEnd"};
+      return {next: kPass, next_name: "transfer::kPass", do_break: false};
+    }
+    return {next: kPass};
+  };
+}
+
+try {
+  exports.kPass = kPass;
+  exports.kEnd = kEnd;
+  exports.SetupTransaction = SetupTransaction;
+  exports.state_SetupTransaction_setup_run0 = state_SetupTransaction_setup_run0;
+  exports.state_SetupTransaction_ssplit_setup2 = state_SetupTransaction_ssplit_setup2;
+  exports.state_SetupTransaction_setup_data0 = state_SetupTransaction_setup_data0;
+  exports.state_SetupTransaction_ssplit_setup_data4 = state_SetupTransaction_ssplit_setup_data4;
+  exports.state_SetupTransaction_ssplit_setup_ack4 = state_SetupTransaction_ssplit_setup_ack4;
+  exports.state_SetupTransaction_csplit4 = state_SetupTransaction_csplit4;
+  exports.state_SetupTransaction_csplit_setup4 = state_SetupTransaction_csplit_setup4;
+  exports.state_SetupTransaction_csplit_handshake4 = state_SetupTransaction_csplit_handshake4;
+  exports.state_SetupTransaction_setup_ack0 = state_SetupTransaction_setup_ack0;
+  exports.BulkTransactionIn = BulkTransactionIn;
+  exports.state_BulkTransactionIn_bulkin_run0 = state_BulkTransactionIn_bulkin_run0;
+  exports.state_BulkTransactionIn_ssplit_in2 = state_BulkTransactionIn_ssplit_in2;
+  exports.state_BulkTransactionIn_ssplit_ack4 = state_BulkTransactionIn_ssplit_ack4;
+  exports.state_BulkTransactionIn_csplit4 = state_BulkTransactionIn_csplit4;
+  exports.state_BulkTransactionIn_csplit_in4 = state_BulkTransactionIn_csplit_in4;
+  exports.state_BulkTransactionIn_csplit_data4 = state_BulkTransactionIn_csplit_data4;
+  exports.state_BulkTransactionIn_bulkin_data0 = state_BulkTransactionIn_bulkin_data0;
+  exports.state_BulkTransactionIn_bulkin_ack0 = state_BulkTransactionIn_bulkin_ack0;
+  exports.BulkTransactionOut = BulkTransactionOut;
+  exports.state_BulkTransactionOut_bulkout_run0 = state_BulkTransactionOut_bulkout_run0;
+  exports.state_BulkTransactionOut_ssplit_out2 = state_BulkTransactionOut_ssplit_out2;
+  exports.state_BulkTransactionOut_ssplit_data4 = state_BulkTransactionOut_ssplit_data4;
+  exports.state_BulkTransactionOut_ssplit_ack4 = state_BulkTransactionOut_ssplit_ack4;
+  exports.state_BulkTransactionOut_csplit4 = state_BulkTransactionOut_csplit4;
+  exports.state_BulkTransactionOut_csplit_out4 = state_BulkTransactionOut_csplit_out4;
+  exports.state_BulkTransactionOut_csplit_ack4 = state_BulkTransactionOut_csplit_ack4;
+  exports.state_BulkTransactionOut_bulkout_data0 = state_BulkTransactionOut_bulkout_data0;
+  exports.state_BulkTransactionOut_bulkout_ack0 = state_BulkTransactionOut_bulkout_ack0;
+  exports.InterruptTransactionIn = InterruptTransactionIn;
+  exports.state_InterruptTransactionIn_run0 = state_InterruptTransactionIn_run0;
+  exports.state_InterruptTransactionIn_ssplit_in2 = state_InterruptTransactionIn_ssplit_in2;
+  exports.state_InterruptTransactionIn_csplit4 = state_InterruptTransactionIn_csplit4;
+  exports.state_InterruptTransactionIn_csplit_in4 = state_InterruptTransactionIn_csplit_in4;
+  exports.state_InterruptTransactionIn_csplit_data4 = state_InterruptTransactionIn_csplit_data4;
+  exports.ControlTransfer = ControlTransfer;
+  exports.state_ControlTransfer_ct_run0 = state_ControlTransfer_ct_run0;
+  exports.state_ControlTransfer_ct_datain04 = state_ControlTransfer_ct_datain04;
+  exports.state_ControlTransfer_ct_dataout04 = state_ControlTransfer_ct_dataout04;
+} catch(e) { }
+ return module.exports;})({});;
+var import___usb_machines_js = (function(exports) {var module={exports:exports};var usb_states = import___usb_states_js;
+
+function TransactionMachine() {
+  var this_ = this;
+
+  this.OnEmit = null;
+
+  var states = [ ];
+
+  var cb = {
+    emit: function(transtype, typename, success, out, state) {
+      if (this_.OnEmit !== null) this_.OnEmit(transtype, typename, success, out, state);
+    },
+    spawn: function(statename, transtype, typename, state) {
+      //console.log(['spawn', statename, transtype, typename]);
+      name = "state_" + typename + "_" + statename + "0";
+      if (!(name in usb_states)) throw name;
+      states.push({
+        out: new usb_states[typename],
+        s: usb_states[name](),
+        packets: [ ],
+        transtype: transtype,
+        typename: typename});
+    },
+  };
+
+  cb.spawn("setup_run", "transaction", "SetupTransaction", null);
+  cb.spawn("bulkin_run", "transaction", "BulkTransactionIn", null);
+  cb.spawn("bulkout_run", "transaction", "BulkTransactionOut", null);
+  cb.spawn("run", "transaction", "InterruptTransactionIn", null);
+
+  this.process_packet = function(pp, packet) {
+    if (pp.pid_type === 1 && pp.pid_name === 1) return null;  // Ignore SOF
+
+    // cache states length because we don't want to process newly spawned
+    // states until the next packet.
+    if (states.length > 100) console.log("Warning: num states: " + states.length);
+    for (var i = 0, il = states.length; i < il; ++i) {
+      var state = states[i];
+      state.packets.push(packet);
+      var meta = {packet: packet};
+      var res = state.s(pp, state.out, meta, state, cb);
+      //console.log(res);
+
+      if (res.next === usb_states.kPass) {
+        state.packets.pop();  // hack...
+        continue;
+      }
+
+      if (res.next === usb_states.kEnd) {
+        //console.log(['die', state.transtype, state.typename]);
+        states.splice(i, 1); --i; --il;
+        continue;
+      }
+
+      state.s = res.next;
+
+      if (res.do_break === true) break;
+    }
+  };
+}
+
+function TransferMachine() {
+  var this_ = this;
+
+  this.OnEmit = null;
+
+  var states = [ ];
+
+  var cb = {
+    emit: function(transtype, typename, success, out, state) {
+      if (this_.OnEmit !== null) this_.OnEmit(transtype, typename, success, out, state);
+    },
+    spawn: function(statename, transtype, typename, state) {
+      //console.log(['spawn', statename, transtype, typename]);
+      name = "state_" + typename + "_" + statename + "0";
+      if (!(name in usb_states)) throw name;
+      states.push({
+        out: new usb_states[typename],
+        s: usb_states[name](),
+        transactions: [ ],
+        transtype: transtype,
+        typename: typename});
+    },
+  };
+
+  cb.spawn("ct_run", "transfer", "ControlTransfer", null);
+
+  this.process_transaction = function(tr, transaction) {
+    if (tr.success !== true) throw "Shouldn't process failed transactions.";
+
+    // cache states length because we don't want to process newly spawned
+    // states until the next packet.
+    if (states.length > 100) console.log("Warning: num states: " + states.length);
+    for (var i = 0, il = states.length; i < il; ++i) {
+      var state = states[i];
+      state.transactions.push(transaction);
+      var meta = {transaction: transaction};
+      var res = state.s(tr, state.out, meta, state, cb);
+
+      if (res.next === usb_states.kPass) {
+        state.transactions.pop();  // hack...
+        continue;
+      }
+
+      if (res.next === usb_states.kEnd) {
+        states.splice(i, 1); --i; --il;
+        continue;
+      }
+
+      state.s = res.next;
+    }
+  };
+}
+
+try {
+  exports.TransactionMachine = TransactionMachine;
+  exports.TransferMachine = TransferMachine;
+} catch(e) { }
+ return module.exports;})({});;
+var import___crc_js = (function(exports) {var module={exports:exports};// http://www.michael-joost.de/crc5check.pdf
+var kCrc5Table = new Uint8Array([
+  0x00, 0x0E, 0x1C, 0x12, 0x11, 0x1F, 0x0D, 0x03,
+  0x0B, 0x05, 0x17, 0x19, 0x1A, 0x14, 0x06, 0x08,
+  0x00, 0x16, 0x05, 0x13, 0x0A, 0x1C, 0x0F, 0x19,
+  0x14, 0x02, 0x11, 0x07, 0x1E, 0x08, 0x1B, 0x0D
+]);
+
+function crc5_16bit(byte0, byte1) {  // Correct CRC should return 0x06
+  var b = byte0 ^ 0x1F;
+  b = byte1 ^ (kCrc5Table[b & 0x0F] ^ kCrc5Table[b >> 4 | 16]);
+  return kCrc5Table[b & 0x0F] ^ kCrc5Table[b >> 4 | 16];
+}
+
+function crc5_24bit(byte0, byte1, byte2) {
+  var b = byte0 ^ 0x1F;
+  b = byte1 ^ (kCrc5Table[b & 0x0F] ^ kCrc5Table[b >> 4 | 16]);
+  b = byte2 ^ (kCrc5Table[b & 0x0F] ^ kCrc5Table[b >> 4 | 16]);
+  return kCrc5Table[b & 0x0F] ^ kCrc5Table[b >> 4 | 16];
+}
+
+// CRC16 implementation taken from somewhere floating around, standard table
+// driven approach as implemented in many languages.
+var CRC_TABLE = [
+  0X0000, 0XC0C1, 0XC181, 0X0140, 0XC301, 0X03C0, 0X0280, 0XC241,
+  0XC601, 0X06C0, 0X0780, 0XC741, 0X0500, 0XC5C1, 0XC481, 0X0440,
+  0XCC01, 0X0CC0, 0X0D80, 0XCD41, 0X0F00, 0XCFC1, 0XCE81, 0X0E40,
+  0X0A00, 0XCAC1, 0XCB81, 0X0B40, 0XC901, 0X09C0, 0X0880, 0XC841,
+  0XD801, 0X18C0, 0X1980, 0XD941, 0X1B00, 0XDBC1, 0XDA81, 0X1A40,
+  0X1E00, 0XDEC1, 0XDF81, 0X1F40, 0XDD01, 0X1DC0, 0X1C80, 0XDC41,
+  0X1400, 0XD4C1, 0XD581, 0X1540, 0XD701, 0X17C0, 0X1680, 0XD641,
+  0XD201, 0X12C0, 0X1380, 0XD341, 0X1100, 0XD1C1, 0XD081, 0X1040,
+  0XF001, 0X30C0, 0X3180, 0XF141, 0X3300, 0XF3C1, 0XF281, 0X3240,
+  0X3600, 0XF6C1, 0XF781, 0X3740, 0XF501, 0X35C0, 0X3480, 0XF441,
+  0X3C00, 0XFCC1, 0XFD81, 0X3D40, 0XFF01, 0X3FC0, 0X3E80, 0XFE41,
+  0XFA01, 0X3AC0, 0X3B80, 0XFB41, 0X3900, 0XF9C1, 0XF881, 0X3840,
+  0X2800, 0XE8C1, 0XE981, 0X2940, 0XEB01, 0X2BC0, 0X2A80, 0XEA41,
+  0XEE01, 0X2EC0, 0X2F80, 0XEF41, 0X2D00, 0XEDC1, 0XEC81, 0X2C40,
+  0XE401, 0X24C0, 0X2580, 0XE541, 0X2700, 0XE7C1, 0XE681, 0X2640,
+  0X2200, 0XE2C1, 0XE381, 0X2340, 0XE101, 0X21C0, 0X2080, 0XE041,
+  0XA001, 0X60C0, 0X6180, 0XA141, 0X6300, 0XA3C1, 0XA281, 0X6240,
+  0X6600, 0XA6C1, 0XA781, 0X6740, 0XA501, 0X65C0, 0X6480, 0XA441,
+  0X6C00, 0XACC1, 0XAD81, 0X6D40, 0XAF01, 0X6FC0, 0X6E80, 0XAE41,
+  0XAA01, 0X6AC0, 0X6B80, 0XAB41, 0X6900, 0XA9C1, 0XA881, 0X6840,
+  0X7800, 0XB8C1, 0XB981, 0X7940, 0XBB01, 0X7BC0, 0X7A80, 0XBA41,
+  0XBE01, 0X7EC0, 0X7F80, 0XBF41, 0X7D00, 0XBDC1, 0XBC81, 0X7C40,
+  0XB401, 0X74C0, 0X7580, 0XB541, 0X7700, 0XB7C1, 0XB681, 0X7640,
+  0X7200, 0XB2C1, 0XB381, 0X7340, 0XB101, 0X71C0, 0X7080, 0XB041,
+  0X5000, 0X90C1, 0X9181, 0X5140, 0X9301, 0X53C0, 0X5280, 0X9241,
+  0X9601, 0X56C0, 0X5780, 0X9741, 0X5500, 0X95C1, 0X9481, 0X5440,
+  0X9C01, 0X5CC0, 0X5D80, 0X9D41, 0X5F00, 0X9FC1, 0X9E81, 0X5E40,
+  0X5A00, 0X9AC1, 0X9B81, 0X5B40, 0X9901, 0X59C0, 0X5880, 0X9841,
+  0X8801, 0X48C0, 0X4980, 0X8941, 0X4B00, 0X8BC1, 0X8A81, 0X4A40,
+  0X4E00, 0X8EC1, 0X8F81, 0X4F40, 0X8D01, 0X4DC0, 0X4C80, 0X8C41,
+  0X4400, 0X84C1, 0X8581, 0X4540, 0X8701, 0X47C0, 0X4680, 0X8641,
+  0X8201, 0X42C0, 0X4380, 0X8341, 0X4100, 0X81C1, 0X8081, 0X4040
+];
+
+// NOTE(deanm): Not sure if this is the correct variant of crc16, but anyway
+// it will compute a crc16 and 0xb001 will be for a correct checksum.
+function crc16(data, start_pos, end_pos)
+{
+  var crc = 0xFFFF;
+
+  for (var i = start_pos; i < end_pos; ++i)
+  {
+    var j = (crc ^ data[i]) & 0xFF;
+
+    crc >>= 8;
+    crc ^= CRC_TABLE[j];
+  }
+
+  return crc;
+}
+
+try {
+  exports.crc5_16bit = crc5_16bit;
+  exports.crc5_24bit = crc5_24bit;
+  exports.crc16 = crc16;
+} catch(e) { }
+ return module.exports;})({});;
+var import___FileSaver_min_js = (function(exports) {var module={exports:exports};/*! @source http://purl.eligrey.com/github/FileSaver.js/blob/master/FileSaver.js */
+var saveAs=saveAs||"undefined"!==typeof navigator&&navigator.msSaveOrOpenBlob&&navigator.msSaveOrOpenBlob.bind(navigator)||function(a){"use strict";if("undefined"===typeof navigator||!/MSIE [1-9]\./.test(navigator.userAgent)){var k=a.document,n=k.createElementNS("http://www.w3.org/1999/xhtml","a"),w="download"in n,x=function(c){var e=k.createEvent("MouseEvents");e.initMouseEvent("click",!0,!1,a,0,0,0,0,0,!1,!1,!1,!1,0,null);c.dispatchEvent(e)},q=a.webkitRequestFileSystem,u=a.requestFileSystem||q||a.mozRequestFileSystem,
+y=function(c){(a.setImmediate||a.setTimeout)(function(){throw c;},0)},r=0,s=function(c){var e=function(){"string"===typeof c?(a.URL||a.webkitURL||a).revokeObjectURL(c):c.remove()};a.chrome?e():setTimeout(e,10)},t=function(c,a,d){a=[].concat(a);for(var b=a.length;b--;){var l=c["on"+a[b]];if("function"===typeof l)try{l.call(c,d||c)}catch(f){y(f)}}},m=function(c,e){var d=this,b=c.type,l=!1,f,p,k=function(){t(d,["writestart","progress","write","writeend"])},g=function(){if(l||!f)f=(a.URL||a.webkitURL||
+a).createObjectURL(c);p?p.location.href=f:void 0==a.open(f,"_blank")&&"undefined"!==typeof safari&&(a.location.href=f);d.readyState=d.DONE;k();s(f)},h=function(a){return function(){if(d.readyState!==d.DONE)return a.apply(this,arguments)}},m={create:!0,exclusive:!1},v;d.readyState=d.INIT;e||(e="download");if(w)f=(a.URL||a.webkitURL||a).createObjectURL(c),n.href=f,n.download=e,x(n),d.readyState=d.DONE,k(),s(f);else{a.chrome&&b&&"application/octet-stream"!==b&&(v=c.slice||c.webkitSlice,c=v.call(c,0,
+c.size,"application/octet-stream"),l=!0);q&&"download"!==e&&(e+=".download");if("application/octet-stream"===b||q)p=a;u?(r+=c.size,u(a.TEMPORARY,r,h(function(a){a.root.getDirectory("saved",m,h(function(a){var b=function(){a.getFile(e,m,h(function(a){a.createWriter(h(function(b){b.onwriteend=function(b){p.location.href=a.toURL();d.readyState=d.DONE;t(d,"writeend",b);s(a)};b.onerror=function(){var a=b.error;a.code!==a.ABORT_ERR&&g()};["writestart","progress","write","abort"].forEach(function(a){b["on"+
+a]=d["on"+a]});b.write(c);d.abort=function(){b.abort();d.readyState=d.DONE};d.readyState=d.WRITING}),g)}),g)};a.getFile(e,{create:!1},h(function(a){a.remove();b()}),h(function(a){a.code===a.NOT_FOUND_ERR?b():g()}))}),g)}),g)):g()}},b=m.prototype;b.abort=function(){this.readyState=this.DONE;t(this,"abort")};b.readyState=b.INIT=0;b.WRITING=1;b.DONE=2;b.error=b.onwritestart=b.onprogress=b.onwrite=b.onabort=b.onerror=b.onwriteend=null;return function(a,b){return new m(a,b)}}}("undefined"!==typeof self&&
+self||"undefined"!==typeof window&&window||this.content);"undefined"!==typeof module&&null!==module?module.exports=saveAs:"undefined"!==typeof define&&null!==define&&null!=define.amd&&define([],function(){return saveAs}); return module.exports;})({});;
+var decoder = import___packet_decoder_js;
+var usb_machines = import___usb_machines_js;
+var usb_structs = import___usb_structs_js;
+var crclib  = import___crc_js;
+var saveAs  = import___FileSaver_min_js;
+
+function ce(name, styles) {
+  var e = document.createElement(name);
+  if (!styles) return e;
+  for (key in styles) e.style[key] = styles[key];
+  return e;
+}
+
+function text_span(str, opts) {
+  var e = ce('span', opts);
+  e.appendChild(document.createTextNode(str));
+  return e;
+}
+
+function stopprop(e) {
+  e.stopPropagation();
+  e.preventDefault();
+  return false;
+}
+
+function text_div(str, bp, lp) {
+  var div = document.createElement('div');
+  div.innerText = str;
+  if (lp !== null)
+    div.style.paddingLeft = lp + 'px';
+  if (bp !== null)
+    div.style.paddingBottom = bp + 'px';
+  return div;
+}
+
+function to_bin_str(len, v) {
+  var str = '';
+  for (var i = 0; i < len; ++i) {
+    str = (v & 1) + str;
+    v >>= 1;
+  }
+  return str;
+}
+
+function make_bit_field_node(name, val, str) {
+  var span = document.createElement('span');
+  span.className = "usbbare-bitfield";
+  span.innerText = str;
+  span.title = name + ': ' + val;
+  span.style.paddingLeft = "0.3em";
+  return span;
+}
+
+
+function make_field(name, numbits, fields) {
+
+  var div = document.createElement('div');
+  var title = document.createElement('div');
+  var body = document.createElement('div');
+
+  div.style.display = 'inline-block';
+  div.style.width = numbits + 'em';
+  div.style.textAlign = 'center';
+  div.style.marginRight = '0.6em';
+  title.innerText = name;
+  title.style.borderBottom = "1px solid #eee";
+
+  for (var i = 0, il = fields.length; i < il; ++i)
+    body.appendChild(fields[i]);
+
+  div.appendChild(title); div.appendChild(body);
+
+  return div;
+}
+
+var kPidNameTable =  [
+  "RESERVED", "PING", "SPLIT", "PRE/ERR",
+  "OUT", "SOF", "IN", "SETUP",
+  "ACK", "NYET", "NAK", "STALL",
+  "DATA0", "DATA2", "DATA1", "MDATA"
+];
+
+function hex_dump(data, cols) {
+  var str = '';
+  var lp = 0;
+  for (var i = 0, il = data.length; i < il; ++i) {
+    var hex = data[i].toString(16);
+    if (lp >= cols) {
+      str += "\n";
+      lp = 0;
+    }
+    if (hex.length < 2) hex = "0" + hex;
+    if (lp !== 0) str += ' ';
+    str += hex;
+    ++lp;
+  }
+  return str;
+}
+
+function hex_dump_chunked(data, cols) {
+  var str = '';
+  var lp = 0;
+  for (var j = 0, jl = data.length; j < jl; j += 2) {
+    var subdata = data[j];  // TODO handle meta data.
+    for (var i = 0, il = subdata.length; i < il; ++i) {
+      var hex = subdata[i].toString(16);
+      if (lp >= cols) {
+        str += "\n";
+        lp = 0;
+      }
+      if (hex.length < 2) hex = "0" + hex;
+      if (lp !== 0) str += ' ';
+      str += hex;
+      ++lp;
+    }
+  }
+  return str;
+}
+
+function flatten_chunked(data) {
+  var total_len = 0;
+  for (var i = 0, il = data.length; i < il; i += 2) total_len += data[i].length;
+  var flat = new Uint8Array(total_len);
+  var p = 0;
+  for (var i = 0, il = data.length; i < il; i += 2) {
+    flat.set(data[i], p);
+    p += data[i].length;
+  }
+  return flat;
+}
+
+function build_table_from_fields(f) {
+  var table = document.createElement('table');
+  var n = f.num_fields();
+  for (var i = 0; i < n; ++i) {
+    var tr = document.createElement('tr');
+    var name = f.get_name_at(i) + ":" + f.get_size_at(i);
+    var td0 = document.createElement('td');
+    td0.appendChild(document.createTextNode(name));
+    var td1 = document.createElement('td');
+    td1.appendChild(document.createTextNode(f.get_value_at(i)));
+    td1.style.textAlign = 'right';
+    var display = f.get_display_at(i);
+    var td2 = document.createElement('td');
+    if (display !== null)
+      td2.appendChild(document.createTextNode("(" + display + ")"));
+    tr.appendChild(td0);
+    tr.appendChild(td1);
+    tr.appendChild(td2);
+    table.appendChild(tr);
+  }
+  table.style.marginLeft = "1em";
+  return table;
+}
+
+// Bit gnarly, try to look up subclass and interface names.
+function look_up_interface_and_set_names(iface) {
+  if (!iface) return;
+  var iface1 = iface.get_display_at(5);
+  if (!iface1) return;
+  var iface2 = usb_structs["eInterfaceSubclass" + iface1];
+  if (!iface2) return;
+  var iface3 = iface2[iface.get_value_at(6)];
+  if (!iface3) return;
+  iface.set_display_at(6, iface3);
+  var iface4 = usb_structs["eInterfaceSubclass" + iface1 + "Protocol" + iface3];
+  if (!iface4) return;
+  var iface5 = iface4[iface.get_value_at(7)];
+  if (!iface5) return;
+  iface.set_display_at(7, iface5);
+}
+
+function disect_device_desc(n, flat_data) {
+  var desc = new usb_structs.Fields();
+  if (usb_structs.parse_StandardDeviceDescriptor(
+      desc, flat_data, 0, flat_data.length) === false) {
+    n.appendChild(text_div("failed to parse device desc", 6, 15));
+    return;
+  }
+
+  n.appendChild(text_div("DEVICE", 2));
+  if (desc.get_value("bDeviceClass") === 9 /* HUB_CLASSCODE */ &&
+      desc.get_value("bDeviceSubClass") === 0) {
+    desc.set_display_at(3, "HUB");
+    desc.set_display_at(5,
+        ["FullSpeed", "HighSpeedSingleTT", "HighSpeedMultipleTT"][desc.get_value_at(5)]);
+  }
+
+  n.appendChild(build_table_from_fields(desc));
+}
+
+function disect_config_desc(n, flat_data) {
+  var descriptor = new usb_structs.Fields();
+  if (usb_structs.parse_StandardConfigurationDescriptor(
+      descriptor, flat_data, 0, flat_data.length) === false) {
+    n.appendChild(text_div("failed to parse config descriptor", 6, 15));
+    return;
+  }
+
+  n.appendChild(text_div("CONFIGURATION", 2));
+  n.appendChild(build_table_from_fields(descriptor));
+
+  var num_interfaces = descriptor.get_value("bNumInterfaces");
+  var tlen = descriptor.get_value("wTotalLength");
+  var pos = 0;
+  pos += descriptor.get_value("bLength");
+
+  for (var i = 0; i < num_interfaces && pos < tlen; ++i) {
+    if (flat_data[pos+1] !== 4) {  // INTERFACE
+      n.appendChild(text_div("Skipped unknown descriptor: " + flat_data[pos+1], 6, 15));
+      --i;
+      pos += flat_data[pos];
+      continue;
+    }
+
+    var iface = new usb_structs.Fields();
+    if (usb_structs.parse_StandardInterfaceDescriptor(
+        iface, flat_data, pos, flat_data.length) === false) {
+      n.appendChild(text_div("failed to parse interface descriptor", 6, 15));
+      return;
+    }
+
+    n.appendChild(text_div("INTERFACE", 2));
+
+    // Gnarly, try to look up subclass and interface names.
+    look_up_interface_and_set_names(iface);
+
+    n.appendChild(build_table_from_fields(iface));
+    pos += iface.get_value("bLength");
+
+    var num_eps = iface.get_value("bNumEndpoints");
+    for (var j = 0; j < num_eps && pos < tlen; ++j) {
+      if (flat_data[pos+1] !== 5) {  // ENDPOINT
+        n.appendChild(text_div("Skipped unknown descriptor: " + flat_data[pos+1], 6, 15));
+        --j;
+        pos += flat_data[pos];
+        continue;
+      }
+
+      var ep = new usb_structs.Fields();
+      if (usb_structs.parse_StandardEndpointDescriptor(
+          ep, flat_data, pos, flat_data.length) === false) {
+        n.appendChild(text_div("failed to parse endpoint descriptor", 6, 15));
+        return;
+      }
+      n.appendChild(text_div("ENDPOINT", 2));
+      n.appendChild(build_table_from_fields(ep));
+      pos += ep.get_value("bLength");
+    }
+  }
+}
+
+function build_transaction_display(n, tr) {
+  while (n.firstChild) n.removeChild(n.firstChild);
+
+  n.appendChild(text_div('Type: ' + tr.typename));
+  n.appendChild(text_div('Success: ' + ((tr.id & 1) ? 'true' : 'false')));
+  n.appendChild(text_div('Packet IDs: ' + tr.packets.map(function(x) { return x.id >> 1; })));
+  var out = tr.out;
+  for (key in out) {
+    if (key.substr(key.length - 2) === "_m") continue;
+    if (key === "setup" && typeof out[key] === "object") {
+      n.appendChild(build_table_from_fields(out.setup));
+      continue;
+    }
+    if (key === "data" && out[key] !== undefined) {
+      n.appendChild(text_div(hex_dump(out[key], 16)));
+      continue
+    }
+    n.appendChild(text_div(key + ': ' + out[key]));
+  }
+
+  //n.appendChild(text_span(JSON.stringify(tr)));
+}
+
+function build_control_transfer_display(n, tr) {
+  var setup = tr.out.setup;
+  if (setup === undefined) return;
+
+  var type = decode_control_transfer_setup(setup, false);
+  n.appendChild(text_div("Setup: " + type, 2));
+  n.appendChild(build_table_from_fields(setup));
+
+  var data = tr.out.data;
+  if (data === undefined || data.length === 0) return;
+  var flat_data = flatten_chunked(data);
+
+  switch (type) {
+    case "GET_DESCRIPTOR":
+      var wvalue = setup.get_value("wValue");
+      var desctype = wvalue >> 8, descidx = wvalue & 0xff;
+
+      n.appendChild(text_div("Descriptor Type: " + desctype +
+                             " (" + usb_structs.eDescriptorTypes[desctype] + ")"), 5);
+      n.appendChild(text_div("Descriptor Index: " + descidx),  5);
+
+      switch (desctype) {
+        case 1:  // DEVICE
+          disect_device_desc(n, flat_data);
+          break;
+        case 2:  // CONFIGURATION
+          disect_config_desc(n, flat_data);
+          break;
+        case 3:  // STRING
+          if (flat_data[1] !== 3) {
+            console.log("Unknown string descriptor constant");
+            return;
+          }
+          var ustr_len = flat_data[0] - 2;
+          var ustr = '';
+          for (var i = 0; i*2+3 < flat_data.length && i < ustr_len; ++i) {
+            ustr += String.fromCharCode(flat_data[i*2+2] | flat_data[i*2+3] << 8);
+          }
+          n.appendChild(text_div("Descriptor String:"));
+          n.appendChild(text_div(ustr, 5, 15));
+          break;
+        default:
+          n.appendChild(text_div(usb_structs.eDescriptorTypes[desctype], 2));
+          break;
+      }
+      break;
+
+    case "GetHubStatus":
+      var hubstatus = new usb_structs.Fields();
+      if (usb_structs.parse_HubStatus(
+          hubstatus, flat_data, 0, flat_data.length) === false) {
+        n.appendChild(text_div("failed to parse hub status", 6, 15));
+        return;
+      }
+
+      n.appendChild(text_div("Hub Status: " + type, 2));
+      n.appendChild(build_table_from_fields(hubstatus));
+
+      break;
+
+    case "GetPortStatus":
+      var portstatus = new usb_structs.Fields();
+      if (usb_structs.parse_HubPortStatus(
+          portstatus, flat_data, 0, flat_data.length) === false) {
+        n.appendChild(text_div("failed to parse port status", 6, 15));
+        return;
+      }
+
+      n.appendChild(text_div("Port Status: " + type, 2));
+      n.appendChild(build_table_from_fields(portstatus));
+      break;
+  }
+}
+
+function build_transfer_display(n, tr) {
+  while (n.firstChild) n.removeChild(n.firstChild);
+
+  n.appendChild(text_div('Type: ' + tr.typename));
+  n.appendChild(text_div('Success: ' + tr.success));
+  n.appendChild(text_div('Transaction IDs: ' + tr.transactions.map(function(x) { return x.id >> 1; })));
+  var out = tr.out;
+  for (key in out) {
+    if (key.substr(key.length - 2) === "_m") continue;
+    if (key === "setup" && typeof out[key] === "object") continue;
+    if (key === "data" && Array.isArray(out[key])) continue;
+    n.appendChild(text_div(key + ': ' + out[key]));
+  }
+
+  if (tr.typename === "ControlTransfer")
+    build_control_transfer_display(n, tr);
+
+  if (Array.isArray(out.data)) {
+    var num_chunks = out.data.length / 2;
+    var total_len = 0;
+    for (var i = 0, il = out.data.length; i < il; i += 2) total_len += out.data[i].length;
+    n.appendChild(text_div("Data num chunks: " + num_chunks + " total length: " + total_len, 2));
+    n.appendChild(text_div(hex_dump_chunked(out.data, 16), 0, 15));
+  }
+
+  //n.appendChild(text_span(JSON.stringify(tr)));
+}
+
+function build_bit_display(name, num_bits, val, badbits, dispstr) {
+  var span = ce('span');
+  span.className = "usbbare-bitfield";
+  span.title = name + ': ' + val + (dispstr ? ' (' + dispstr + ')' : '');
+
+  var html = '';
+
+  for (var i = 0; i < num_bits; ++i) {
+    if (badbits & 1) {
+      html = '<span class="bad">' + (val & 1) + '</span>' + html;
+    } else {
+      html = (val & 1) + html;
+    }
+    val >>= 1;
+    badbits >>= 1;
+  }
+
+  span.innerHTML = html;
+
+  return span;
+}
+
+function build_packet_display(n, p) {
+  while (n.firstChild) n.removeChild(n.firstChild);
+
+  var rawdata = g_reader.rawdata;
+  g_reader.seek_to_packet(p.p);
+
+  var plen = g_reader.read_plen();
+  var p = g_reader.packet_pos();
+
+  var pp = plen === 0 ? null : decoder.decode_packet(rawdata, p, plen);
+
+  if (pp === null) {
+    n.innerText = 'ERROR: Packet undecoded.';
+    return;
+  }
+
+  //n.appendChild(text_div(JSON.stringify(d)));
+
+  var pid = rawdata[p];
+
+  var pid_type = pid & 3;
+  var pid_name = (pid >> 2) & 3;
+  var pid_type_str = ["special", "token", "handshake", "data"][pid_type];
+  var pid_name_str = kPidNameTable[pid & 0xf];
+
+  n.appendChild(make_field("PID", 4, [
+      build_bit_display("pid_type", 2, pid_type, 0, pid_type_str),
+      build_bit_display("pid_name", 2, pid_name, 0, pid_name_str)]));
+
+  var npid_type = (pid >> 4) & 3;
+  var npid_name = (pid >> 6) & 3;
+  n.appendChild(make_field("NPID", 4, [
+      build_bit_display("npid_type", 2, npid_type, pid_type^~npid_type, null),
+      build_bit_display("npid_name", 2, npid_name, pid_name^~npid_name, null)]));
+
+  if (pp.pid_type === 1 || (pp.pid_type === 0 && pp.pid_name === 1)) {  // Token
+    if (pp.pid_type === 1 && pp.pid_name === 1) {  // SOF
+      n.appendChild(make_field("FrameNumber", 11,
+        [make_bit_field_node("FrameNumber", pp.FrameNumber, to_bin_str(11, pp.FrameNumber))]));
+    } else {
+      n.appendChild(make_field("ADDR", 6,
+        [make_bit_field_node("ADDR", pp.ADDR, to_bin_str(7, pp.ADDR))]));
+      n.appendChild(make_field("EndPoint", 5,
+        [make_bit_field_node("EndPoint", pp.EndPoint, to_bin_str(4, pp.EndPoint))]));
+    }
+    var crc = crclib.crc5_16bit(rawdata[p+1], rawdata[p+2]);
+    n.appendChild(make_field("CRC5", 4, [
+        build_bit_display("CRC5", 5, pp.CRC5, crc^6, null)]));
+  } else if (pp.pid_type === 3) {  // Data
+    n.appendChild(make_field("DATA", 4,
+      [make_bit_field_node("data length", pp.data.length, "...")]));
+    var crc = crclib.crc16(rawdata, p+1, p+plen);
+    n.appendChild(make_field("CRC16", 4, [
+        build_bit_display("CRC16", 16, pp.CRC16, crc^0xb001, null)]));
+  } else if (pp.pid_type === 0 && pp.pid_name === 2) {  // SPLIT
+    n.appendChild(make_field("HubAddr", 4, [
+        build_bit_display("HubAddr", 7, pp.HubAddr, 0, null)]));
+    n.appendChild(make_field("SC", 2, [
+        build_bit_display("SC", 1, pp.SC, 0, pp.SC ? "Complete" : "Start")]));
+    n.appendChild(make_field("Port", 4, [
+        build_bit_display("Port", 7, pp.Port, 0, null)]));
+    n.appendChild(make_field("S", 2, [
+        build_bit_display("S", 1, pp.S, 0, pp.S ? "Low Speed" : "Full Speed")]));
+    n.appendChild(make_field("E/U", 2, [
+        build_bit_display("EU", 1, pp.EU, 0, null)]));
+    n.appendChild(make_field("ET", 2, [
+        build_bit_display("ET", 2, pp.ET, 0, ["Control", "Isochronous", "Bulk", "Interrupt"][pp.ET])]));
+    var crc = crclib.crc5_24bit(rawdata[p+1], rawdata[p+2], rawdata[p+3]);
+    n.appendChild(make_field("CRC5", 4, [
+        build_bit_display("CRC5", 5, pp.CRC5, crc^6, null)]));
+  }
+  //n.appendChild(text_div(p.transaction_ids));
+}
+
+function build_packet_row(p, height) {
+  var row = document.createElement('div');
+  row.className = 'usbbare-row';
+  row.style.height = height;
+
+  var n = document.createElement('span');
+  var ts = document.createElement('span');
+  var desc = document.createElement('span');
+
+  n.innerText = p.id >> 1;
+  n.style.color = (p.id & 1) ? "#090" : "#900";
+
+  ts.innerText = p.t;
+
+  var desc_str = p.f !== 0 ? "\u2691" : '';
+
+  var rawdata = g_reader.rawdata;
+
+  var pp = p.plen === 0 ? null : decoder.decode_packet(rawdata, p.p, p.plen);
+  if (pp !== null)
+    desc_str += decode_packet_to_display_string(pp, rawdata, p.p, p.plen);
+
+  desc.innerText = desc_str;
+
+  row.appendChild(n);
+  row.appendChild(ts);
+  row.appendChild(desc);
+  return row;
+}
+
+function build_transaction_row(tr, height) {
+  var row = document.createElement('div');
+  row.className = 'usbbare-row';
+  row.style.height = height;
+  var n = document.createElement('span');
+  var ts = document.createElement('span');
+  var desc = document.createElement('span');
+  n.style.color = (tr.id & 1) ? "#090" : "#900";
+  n.innerText = tr.id >> 1; ts.innerText = tr.t;
+  desc.innerText = tr.typename;
+  row.appendChild(n); row.appendChild(ts);
+  row.appendChild(desc);
+  return row;
+}
+
+function decode_control_transfer_setup(setup, justdisp) {
+  // TODO: figure out how to do this cleaner than putting it all back together.
+  var requesttype_and_request =
+    setup.get_value_at(0) << 8 | setup.get_value_at(1) << 13 | setup.get_value_at(2) << 15 |
+    setup.get_value_at(3);
+
+  switch (setup.get_value("bmRequestType.type")) {
+    case 0:  // Standard
+      var display = usb_structs.eStandardDeviceRequests[requesttype_and_request];
+      if (justdisp) return display;
+
+      return display;
+      break;
+
+    case 1:  // Class
+      var display = usb_structs.eClassSpecificRequests[requesttype_and_request];
+      if (display === undefined)
+        display = usb_structs.eClassSpecificHIDRequests[requesttype_and_request];
+      if (justdisp) return display;
+
+      switch (display) {
+        case "ClearHubFeature":
+        case "SetHubFeature":
+          setup.set_display_at(4, usb_structs.eHubClassFeatureSelectorsHub[setup.get_value_at(4)]);
+          break;
+        case "ClearPortFeature":
+        case "SetPortFeature":
+          setup.set_display_at(4, usb_structs.eHubClassFeatureSelectorsPort[setup.get_value_at(4)]);
+          break;
+      }
+
+      return display;
+      break;
+  }
+
+  return undefined;
+}
+
+function build_transfer_row(tr, height) {
+  var row = document.createElement('div');
+  row.className = 'usbbare-row';
+  row.style.height = height;
+  var n = document.createElement('span');
+  var ts = document.createElement('span');
+  var desc = document.createElement('span');
+  n.style.color = (tr.id & 1) ? "#090" : "#900";
+  n.innerText = tr.id >> 1; ts.innerText = tr.t;
+
+  var desc_str = tr.out.ADDR + ':' + tr.out.EndPoint + ' ' + tr.typename;
+  // "ControlTransfer (SET_ADDRESS)", etc.
+  if (tr.typename === "ControlTransfer" && tr.out.setup) {
+    desc_str = (tr.out.setup.get_value_at(2) ? "\u2190 " : "\u2192 ") + desc_str;
+    var display = decode_control_transfer_setup(tr.out.setup, true);
+    if (display !== undefined) desc_str += " " + display;
+  }
+
+  desc.innerText = desc_str;
+  row.appendChild(n); row.appendChild(ts);
+  row.appendChild(desc);
+  return row;
+}
+
+function LazyTable(cell_height, num_cells) {
+  var this_ = this;
+
+  var total_height = num_cells * cell_height;
+
+  var div = ce('div');
+
+  var hole0 = ce('div', {backgroundColor: 'blue', height: 0})
+  var hole1 = ce('div', {backgroundColor: 'red',  height: total_height + 'px'})
+
+  var a = 0;
+  var b = 0;
+
+  var expanded_id = null;
+  var expanded_node = null;
+
+  var select_div = ce('div',
+      {backgroundColor: "#eee", width: "40em", height: "18px", display: "none",
+       position: "absolute", top: 0, left: 0, zIndex: -1});
+
+  var selected = null;
+
+  var i = 0;
+
+  this.select = function(p) { 
+    if (p === selected) return;
+
+    if (p === null) {
+      select_div.style.display = "none";
+      selected = p;
+      return;
+    }
+
+    if (p >= num_cells) p = num_cells-1;
+    if (p < 0) p = 0;
+
+    select_div.style.display = "block";
+    select_div.style.top = (p * cell_height) + 'px';
+    selected = p;
+  };
+
+  this.clear_selection = function() {
+    this.select(null);
+  };
+
+  this.build_cell = function(id) {
+    return null;
+  };
+
+  this.remove_cell = function(n) {
+    div.removeChild(n);
+  };
+
+  this.remove_expanded = function(n) {
+    div.removeChild(n);
+  };
+
+  this.build_expanded = function(id) {
+    return null;
+  };
+
+  this.build_cell_internal = function(id) {
+    var cell = this.build_cell(id);
+    cell.cell_id = id;
+    return cell;
+  };
+
+  function empty_layout() {  // Collapse b to a, emptying all cells.
+    while (b > a) {
+      --b;
+      if (b === expanded_id) this_.remove_expanded(hole1.previousSibling);
+      this_.remove_cell(hole1.previousSibling);
+    }
+  }
+
+  var body = document.body;
+
+  function layout() {
+    var stop = body.scrollTop - div.offsetTop;
+
+    var c = stop / cell_height | 0;
+    var d = (stop + body.clientHeight + cell_height) / cell_height | 0;
+    c -= 10; d += 10;  // Some buffer
+    if (c < 0) c = 0;
+    if (d > num_cells) d = num_cells;
+    if (d < c) d = c;
+
+    while (a < c && a < b) {  // removing elements from the top
+      this_.remove_cell(hole0.nextSibling);
+      if (a === expanded_id) this_.remove_expanded(hole0.nextSibling);
+      ++a;
+    }
+
+    while (b > d && b > a) {  // removing elements from the bottom
+      --b;
+      if (b === expanded_id) this_.remove_expanded(hole1.previousSibling);
+      this_.remove_cell(hole1.previousSibling);
+    }
+
+    if (a === b) a = b = c;
+
+    while (a > c) {  // adding elements to the top
+      a--;
+      if (a === expanded_id) div.insertBefore(expanded_node, hole0.nextSibling);
+      var cell = this_.build_cell_internal(a);
+      div.insertBefore(cell, hole0.nextSibling);
+    }
+
+    while (b < d && b < num_cells) {  // adding elements to the bottom
+      var cell = this_.build_cell_internal(b);
+      div.insertBefore(cell, hole1);
+      if (b === expanded_id) div.insertBefore(expanded_node, hole1);
+      ++b;
+    }
+
+    var hole0_height = a * cell_height;
+    var hole1_height = total_height - ((b - a) * cell_height) - hole0_height;
+    hole0.style.height = hole0_height + 'px';
+    hole1.style.height = hole1_height + 'px';
+  }
+
+  div.setAttribute("tabindex", 0);
+
+  div.addEventListener("keydown", function(e) {
+    if (e.which !== 40 && e.which !== 38) return true;
+
+    if (selected !== null) {
+      var new_pos = selected + (e.which === 40 ? 1 : -1);
+      this_.select(new_pos);
+      new_node = this_.build_expanded(selected);
+    }
+
+    return stopprop(e);
+  });
+
+  div.addEventListener('click', (function() { return function(e) {
+    for (var target = e.target; target !== div; target = target.parentNode) {
+      if (target.cell_id !== undefined) {
+        var new_node = this_.build_expanded(target.cell_id);
+        if (new_node === null) break;
+        empty_layout();
+        expanded_node = new_node;
+        expanded_id = target.cell_id;
+        layout();
+        break;
+      }
+    }
+  };})());
+
+  div.appendChild(hole0);
+  div.appendChild(hole1);
+
+  this.layout = function() { layout(); };
+
+  var container = ce('div');
+  container.className = "usbbare-lazytable-container";
+  container.appendChild(select_div);
+  container.appendChild(div);
+
+  this.div = div;
+  this.container = container;
+}
+
+function build_nav_bar(cb) {
+  var div = ce('div');
+  div.className = "usbbare-nav";
+
+  var packets = ce('span', {marginRight: '2em', cursor: 'default'});
+  var packets_orb = text_span('\u25CF', {position: 'relative', left: '-0.15em', top: '0.033em'});
+  packets.appendChild(packets_orb);
+  packets.appendChild(text_span('packets', {marginRight: 0}));
+
+  var transactions = ce('span', {marginRight: '2em', cursor: 'default'});
+  var transactions_orb = text_span('\u25CF', {position: 'relative', left: '-0.15em', top: '0.033em'});
+  transactions.appendChild(transactions_orb);
+  transactions.appendChild(text_span('transactions', {marginRight: 0}));
+
+  var transfers = ce('span', {marginRight: '2em', cursor: 'default'});
+  var transfers_orb = text_span('\u25CF', {position: 'relative', left: '-0.15em', top: '0.033em'});
+  transfers.appendChild(transfers_orb);
+  transfers.appendChild(text_span('transfers', {marginRight: 0, borderBottom: '1px solid black'}));
+
+  var cur_view = 2;
+
+  var link_nodes = [packets.lastChild, transactions.lastChild, transfers.lastChild];
+
+  var orbs = [packets_orb, transactions_orb, transfers_orb];
+  var orb_states = [0, 0, 0];
+
+  function handle_click(view_id) {
+    return function(e) {
+      if (cur_view === view_id) {
+        orb_states[view_id] = (orb_states[view_id] + 1) % 3;
+        orbs[view_id].style.color = ["#000", "#090", "#900"][orb_states[view_id]];
+        //orb.textContent = ['\u25CF', '\u25D0', '\u25D1'][orb_state];
+        cb(cur_view, view_id, orb_states[view_id]);
+      } else {
+        link_nodes[cur_view].style.borderBottom = 0;
+        if (cur_view !== view_id) cb(cur_view, view_id, orb_states[view_id]);
+        cur_view = view_id;
+        link_nodes[cur_view].style.borderBottom = '1px solid black';
+      }
+      e.preventDefault();
+      return false;
+    };
+  }
+
+  packets.addEventListener('click', handle_click(0));
+  transactions.addEventListener('click', handle_click(1));
+  transfers.addEventListener('click', handle_click(2));
+
+  div.appendChild(packets);
+  div.appendChild(transactions);
+  div.appendChild(transfers);
+
+  return div;
+}
+
+function build_ui(
+    packets, packets_succ, packets_fail,
+    transactions, transactions_succ, transactions_fail,
+    transfers, transfers_succ, transfers_fail) {
+
+  var panel = document.createElement('div');
+  panel.style.zIndex = 2;
+  panel.className = "usbbare-panel";
+  panel.style.display = "none";
+
+  var packet_display_node = document.createElement('div');
+  packet_display_node.className = "usbbare-p";
+
+  var kCellHeight = 18;
+
+  function packet_table(pkts) {
+    var view = new LazyTable(kCellHeight, pkts.length);
+    view.div.className = "usbbare-list";
+
+    view.build_cell = function(pos) {
+      var cell = build_packet_row(pkts[pos], kCellHeight + 'px');
+      return cell;
+    };
+
+    view.build_expanded = function(pos) {
+      build_packet_display(panel, pkts[pos]);
+      panel.style.display = "block";
+      view.select(pos);
+      return null;  // Not inline in the list view.
+    };
+    return view;
+  }
+
+  function trans_table(trans) {
+    var view = new LazyTable(kCellHeight, trans.length);
+    view.div.className = "usbbare-list";
+    view.build_cell = function(pos) {
+      var tr = trans[pos];
+      var cell = build_transaction_row(tr, kCellHeight + 'px');
+      return cell;
+    };
+
+    view.build_expanded = function(pos) {
+      build_transaction_display(panel, trans[pos]);
+      panel.style.display = "block";
+      view.select(pos);
+      return null;  // Not inline in the list view.
+    };
+    return view;
+  }
+
+  function tfer_table(tfer) {
+    var view = new LazyTable(kCellHeight, tfer.length);
+    view.div.className = "usbbare-list";
+    view.build_cell = function(pos) {
+      var tr = tfer[pos];
+      var cell = build_transfer_row(tr, kCellHeight + 'px');
+      return cell;
+    };
+
+    view.build_expanded = function(pos) {
+      build_transfer_display(panel, tfer[pos]);
+      panel.style.display = "block";
+      view.select(pos);
+      return null;  // Not inline in the list view.
+    };
+    return view;
+  }
+
+  var packet_view = packet_table(packets);
+  var packet_succ_view = packet_table(packets_succ);
+  var packet_fail_view = packet_table(packets_fail);
+
+  var transaction_view = trans_table(transactions);
+  var transaction_succ_view = trans_table(transactions_succ);
+  var transaction_fail_view = trans_table(transactions_fail);
+
+  var transfer_view = tfer_table(transfers);
+  var transfer_succ_view = tfer_table(transfers_succ);
+  var transfer_fail_view = tfer_table(transfers_fail);
+
+  var view_nodes = [
+    [packet_view, packet_succ_view, packet_fail_view],
+    [transaction_view, transaction_succ_view, transaction_fail_view],
+    [transfer_view, transfer_succ_view, transfer_fail_view],
+  ];
+  var cur_view_node = view_nodes[2][0];
+
+  var nav_bar = build_nav_bar(function(old_id, new_id, orb_id) {
+    document.body.removeChild(cur_view_node.container);
+    var new_node = view_nodes[new_id][orb_id];
+    document.body.appendChild(new_node.container);
+    new_node.clear_selection();
+    new_node.layout();
+    cur_view_node = new_node;
+  });
+
+  cur_view_node.layout();
+
+  document.addEventListener("scroll", function(x) { cur_view_node.layout(); });
+  window.addEventListener("resize", function(x) { cur_view_node.layout(); });
+
+
+  document.body.appendChild(nav_bar);
+  document.body.appendChild(panel);
+  document.body.appendChild(cur_view_node.container);
+}
+
+function decode_packet_to_display_string(dp, buf, p, plen) {
+  var pid_type = dp.pid_type, pid_name = dp.pid_name;
+
+  var text = null;
+  switch (pid_type) {
+    case 0:
+      switch (pid_name) {
+        case 0:
+          text = "special RESERVED";
+          break;
+        case 1:
+          text = "special PING ADDR: " + dp.ADDR + " EndPoint: " + dp.EndPoint;
+          break;
+        case 2:
+          text = (dp.SC ? "special CSPLIT " : "special SSPLIT ") + dp.HubAddr + ":" + dp.Port +
+              " (" + ["Control", "Isochronous", "Bulk", "Interrupt"][dp.ET] + ")";
+          break;
+        case 3:
+          text = "special PRE/ERR";
+          break;
+      }
+      break;
+
+    // Token packets:
+    //   Sync PID ADDR ENDP CRC5 EOP
+    // Start of Frame Packets:
+    //   Sync PID Frame Number CRC5 EOP
+    case 1:
+      if (plen != 3) return "ERROR: token packet length != 3";
+      text = "token " + ["OUT", "SOF", "IN", "SETUP"][pid_name] + ((pid_name === 1) ?
+                " FrameNumber: " + dp.FrameNumber :
+                " ADDR: " + dp.ADDR + " EndPoint: " + dp.EndPoint);
+      break;
+
+    // Handshake packets:
+    //   Sync PID EOP
+    case 2:
+      if (plen != 1) return "ERROR: handshake packet length != 1";
+      text = "handshake " + ["ACK", "NYET", "NAK", "STALL"][pid_name];
+      break;
+
+    // Data packets:
+    //   Sync PID Data CRC16 EOP
+    case 3:
+      if (plen < 3) return "ERROR: data packet length < 3";
+      text = "data " + ["DATA0", "DATA2", "DATA1", "MDATA"][pid_name] + " len " + (plen-3);
+      break;
+  }
+
+  return text;
+}
+
+function PacketReader(rawdata) {
+  this.isEOF = function() { };
+
+  // Reset to the first packet.
+  this.reset = function() { };
+
+  this.read_time = function() { };
+  this.read_flags = function() { };
+  // Return the length of just the USB packet (not including flags, etc).
+  this.read_plen = function() { };
+  // Return the position of just the USB packet, of length |plen|.
+  this.packet_pos = function() { };
+
+  // Move to the next packet.
+  this.advance = function() { };
+}
+
+// Minimal binary file format, no header, just a repeated sequence of:
+//   [ 2 bytes flags ] [ 3 bytes timestamp ] [ 2 bytes packet len ] [ data ]
+function MinBinPacketReader(rawdata) {
+  this.rawdata = rawdata;
+
+  var p = 0;
+  var len = rawdata.length;
+
+  this.isEOF = function() { return p >= len; };
+  this.reset = function() { p = 0; };
+
+  // Position is of the packet data (packet_pos()), so we have to go backwards from there.
+  this.seek_to_packet = function(np) {
+    p = np - 7;
+  };
+
+  this.read_time = function() {
+    return rawdata[p+2] | rawdata[p+3] << 8 | rawdata[p+4] << 16;
+  };
+
+  this.read_flags = function() {
+    return rawdata[p] | rawdata[p+1] << 8;
+  };
+
+  this.read_plen = function() {
+    return rawdata[p+5] | rawdata[p+6] << 8;
+  };
+
+  this.packet_pos = function() {
+    return p + 7;
+  };
+
+  this.advance = function() { p += this.read_plen() + 7; };
+
+  this.estimate_percentage = function() { return p / len; };
+}
+
+function PcapReader(rawdata) {
+  this.rawdata = rawdata;
+
+  var p = 0;
+  var len = rawdata.length;
+
+  if (!(len > 24 && rawdata[0] == 0xD4 &&
+                    rawdata[1] == 0xC3 &&
+                    rawdata[2] == 0xB2 &&
+                    rawdata[3] == 0xA1)) {
+    throw "Not a valid pcap file.";
+  }
+
+  p = 24;  // skip pcap header
+
+  this.isEOF = function() { return p >= len; };
+  this.reset = function() { p = 0; };
+
+  // Position is of the packet data (packet_pos()), so we have to go backwards from there.
+  this.seek_to_packet = function(np) {
+    p = np - 18;
+  };
+
+  // NOTE(deanm): A shift << 24 is fragile because this will be interpreted as
+  // signed.  in JavaScript 1 << 31 is -2147483648.  The last octet should be
+  // handled with add + mul to go into double size :(
+  function read_uint32_le(p) {
+    return (rawdata[p+0] | rawdata[p+1] << 8 | rawdata[p+2] << 16) + rawdata[p+3] * 0x1000000;
+  }
+
+  this.read_time = function() {
+    var ts_sec = read_uint32_le(p);
+    var ts_usec = read_uint32_le(p+4)
+    return ts_sec + ts_usec / 1e6;
+  };
+
+  this.read_flags = function() {
+    return rawdata[p+16] | rawdata[p+17] << 8;
+  };
+
+  this.read_plen = function() {
+    var incl_len = read_uint32_le(p+8);
+    var orig_len = read_uint32_le(p+12);
+    if (incl_len !== orig_len) throw "incl_len !== orig_len";
+    if (incl_len < 2) throw "incl_len < 2";
+    return incl_len - 2;
+  };
+
+  this.packet_pos = function() {
+    return p + 18;
+  };
+
+  this.advance = function() { p += this.read_plen() + 18; };
+
+  this.estimate_percentage = function() { return p / len; };
+}
+
+function make_packet_reader(rawdata) {
+  var readers = [ PcapReader, MinBinPacketReader ];
+
+  for (var i = 0, il = readers.length; i < il; ++i) {
+    var reader = readers[i];
+    try {
+      return new reader(rawdata);
+    } catch(e) { }
+  }
+
+  throw "No reader was able to handle file.";
+}
+
+// Decode packets from a reader, calling |cb| for each packet.
+// Processes in blocks so that the UI loop can keep running, after a block
+// is finished the next one is queued on the runloop, so it is a bit "async".
+function block_decode_packets(blockmask, reader, cb) {
+  var rawdata = reader.rawdata;
+
+  var i = 0;
+
+  function process_block() {
+    while (true) {
+      if (reader.isEOF() === true) {
+        cb(true);
+        break;
+      }
+
+      var time = reader.read_time();
+      var flags = reader.read_flags();
+      var plen = reader.read_plen();
+      var p = reader.packet_pos();
+      var pp = plen === 0 ? null : decoder.decode_packet(rawdata, p, plen);
+
+      var success =
+        pp !== null &&  // Check decode
+        (pp.CRC5 === undefined ||  // Check CRC5
+          ((plen === 3 && crclib.crc5_16bit(rawdata[p+1], rawdata[p+2]) === 6) ||
+           (plen === 4 && crclib.crc5_24bit(rawdata[p+1], rawdata[p+2], rawdata[p+3]) === 6))) &&
+        (pp.CRC16 === undefined ||  // Check CRC16
+          (plen >= 3 && crclib.crc16(rawdata, p+1, p+plen) === 0xb001));
+
+      cb(false, i, i & blockmask, time, flags, plen, p, pp, success);
+
+      reader.advance();
+
+      ++i;
+
+      if ((i & blockmask) === 0) {
+        setTimeout(process_block, 0);
+        break;
+      }
+    }
+  }
+
+  process_block();
+}
+
+var g_reader;
+
+function process_and_init(rawdata) {
+  var reader = make_packet_reader(rawdata);
+  g_reader = reader;
+
+  var transaction_machine = new usb_machines.TransactionMachine();
+  var transfer_machine = new usb_machines.TransferMachine();
+
+  var loading = ce('div',
+    {height: '100%', width: '100%',
+     backgroundColor: 'purple', color: 'white', fontSize: '8em'});
+  loading.innerText = 'loading...'
+  document.body.appendChild(loading);
+
+  var packets = [ ];
+  var packets_succ = [ ];
+  var packets_fail = [ ];
+
+  var transactions = [ ];
+  var transactions_succ = [ ];
+  var transactions_fail = [ ];
+
+  transaction_machine.OnEmit = function(transtype, typename, success, out, state) {
+    var pkts = state.packets;
+    var succ_bit = success === true ? 1 : 0;
+    var transaction_id = transactions.length << 1 | succ_bit;
+
+    /*
+    for (var i = 0, il = pkts.length; i < il; ++i) {
+      if (pkts[i].transaction_ids === undefined) pkts[i].transaction_ids = [ ];
+      pkts[i].transaction_ids.push(transaction_id);
+    }
+    */
+
+    var tr = {id: transaction_id,
+              typename: typename,
+              success: success,
+              out: out,
+              packets: pkts,
+              t: pkts[0].t /* TODO handle overflow */};
+    transactions.push(tr);
+    (success === true ? transactions_succ : transactions_fail).push(tr);
+
+    if (success === true) transfer_machine.process_transaction(tr, tr);
+  };
+
+  var transfers = [ ];
+  var transfers_succ = [ ];
+  var transfers_fail = [ ];
+
+  transfer_machine.OnEmit = function(transtype, typename, success, out, state) {
+    var transactions = state.transactions;
+    var succ_bit = success === true ? 1 : 0;
+    var transfer_id = transfers.length << 1 | succ_bit;
+
+    /*
+    for (var i = 0, il = transactions.length; i < il; ++i) {
+      transactions[i].transfer_id = transfer_id;
+    }
+    */
+
+    var tr = {id: transfer_id,
+              typename: typename,
+              success: success,
+              out: out,
+              transactions: transactions,
+              t: transactions[0].t /* TODO handle overflow */};
+    transfers.push(tr);
+    (success === true ? transfers_succ : transfers_fail).push(tr);
+  };
+
+  // Keep the browser happy by processing in chunks and keep the UI loop alive.
+
+  console.log('Decoding packets and running state machines...');
+
+  block_decode_packets(0x3fff, reader, function(eof, i, bi, time, flags, plen, p, pp, success) {
+    if (eof === true) {
+      console.log('...done');
+      document.body.removeChild(loading);
+
+      build_ui(packets, packets_succ, packets_fail,
+               transactions, transactions_succ, transactions_fail,
+               transfers, transfers_succ, transfers_fail);
+      return;
+    }
+
+    if (bi === 0) {
+      loading.innerText = 'loading... ' + ((reader.estimate_percentage() * 100) | 0) + '%';
+    }
+
+    var packet_id = i << 1 | (success === true ? 1 : 0);
+
+    var packet = {
+      id: packet_id,
+      f: flags,
+      t: time,
+      p: p, plen: plen};
+    packets.push(packet);
+    (success === true ? packets_succ : packets_fail).push(packet);
+
+    if (success) transaction_machine.process_packet(pp, packet);
+  });
+}
+
+function build_file_drop_area() {
+  var div = ce('div',
+    {height: '100%', width: '100%',
+     backgroundColor: 'purple', color: 'white', fontSize: '8em'});
+  div.innerText = "Drop a packet file";
+
+
+  div.addEventListener("dragover", stopprop);
+  div.addEventListener("dragenter", function(e) {
+    div.style.backgroundColor = 'cyan';
+    return stopprop(e);
+  });
+  div.addEventListener("dragleave", function(e) {
+    div.style.backgroundColor = 'purple';
+    return stopprop(e);
+  });
+  div.addEventListener("drop", function(e) {
+    var dt = e.dataTransfer;
+    if (dt === undefined) alert("no data transfer");
+    var files = dt.files;
+    for (var i = 0, il = files.length; i < il; ++i) {
+      var file = files[i];
+      var reader = new FileReader();
+      reader.onload = function(pe) {
+        if (pe.total !== pe.loaded) throw "xx";
+        var ab = reader.result;
+        process_and_init(new Uint8Array(ab));
+        document.body.removeChild(div);
+      };
+      reader.readAsArrayBuffer(file);
+      break;
+    }
+    return stopprop(e);
+  });
+  document.body.appendChild(div);
+}
+
+// This is a bit hairy because the sender (host or device) must be reconstructed
+// from context, the information doesn't exist for which side the packet came from.
+var last_was_host = false;
+var next_is_dev = false;
+function decoded_packet_to_utg_entry(pp) {
+  switch (pp.pid_type) {
+    case 0:  // Special
+      last_was_host = true;
+      switch (pp.pid_name) {
+        case 2:
+          return "pid=SPLIT { sc=" + pp.SC + " hub_addr=" + pp.HubAddr +
+                 " port=" + pp.Port + " s=" + pp.S + " e=" + pp.EU + " et=" + pp.ET + " }\n";
+          break;
+        default:
+          return "; error handling special\n";
+      }
+      break;
+
+    // Token packets:
+    //   Sync PID ADDR ENDP CRC5 EOP
+    // Start of Frame Packets:
+    //   Sync PID Frame Number CRC5 EOP
+    case 1:
+      last_was_host = true;
+      next_is_dev = pp.pid_name === 2;
+      return "pid=" + kPidNameTable[pp.pid_name + 4] + " addr=" + pp.ADDR +
+             " endp=" + pp.EndPoint + " { }\n";
+
+    // Handshake packets:
+    //   Sync PID EOP
+    case 2:
+      return (last_was_host ? "expected_pid=" : "pid=") +
+             kPidNameTable[pp.pid_name + 8] + " { }\n";
+
+    // Data packets:
+    //   Sync PID Data CRC16 EOP
+    case 3:
+      var str = next_is_dev ? "expected_pid=" : "pid=";
+      str += kPidNameTable[pp.pid_name + 12] + " { data=(";
+      for (var i = 0, il = pp.data.length; i < il; ++i) {
+        var hex = pp.data[i].toString(16);
+        if (hex.length < 2) hex = "0" + hex;
+        str += " " + hex;
+      }
+      str += " ) }\n";
+      last_was_host = !next_is_dev;
+      return str;
+  }
+
+  return '; error\n';
+}
+
+function export_as_utg(reader) {
+  reader.reset();
+
+  var rawdata = reader.rawdata;
+
+  var last_t = 0;
+  var t_base = 0;
+
+  var strs = [
+    "file_type=UPAS \n" +
+    "file_version=4\n" +
+    "file_mode=HOST   ; Emulates a HOST or DEVICE\n" +
+    "file_speed=HIGH\n"
+  ];
+
+  block_decode_packets(0x3fff, reader, function(eof, i, bi, t, flags, plen, p, pp, success) {
+    if (eof === true) {
+      var blob = new Blob(strs, {type: "text/plain;charset=utf-8"});
+      saveAs(blob, "export.utg");
+      return;
+    }
+
+    if (success === true) {  // what to do on failure?
+      if (pp.pid_type !== 1 || pp.pid_name !== 1) {  // Ignore SOF
+        var str = decoded_packet_to_utg_entry(pp);
+        strs.push(str);
+      }
+    }
+  });
+}
+
+function export_as_pkt(reader) {
+  reader.reset();
+
+  var rawdata = reader.rawdata;
+
+  var last_t = 0;
+  var t_base = 0;
+
+  var strs = [ ];
+
+  block_decode_packets(0x3fff, reader, function(eof, i, bi, t, flags, plen, p, pp, success) {
+    if (eof === true) {
+      var blob = new Blob(strs, {type: "text/plain;charset=utf-8"});
+      saveAs(blob, "export.pkt");
+      return;
+    }
+
+    if (t < last_t) t_base += 0x1000000;  // 24 bit counter @60MHz rollover
+    last_t = t;
+
+    t = (t + t_base) / 60e6;  // 60MHz -> seconds.
+
+    var str = 'RawPacket data<';
+
+    for (var j = 0; j < plen; ++j) {
+      var hex = rawdata[p + j].toString(16);
+      if (hex.length < 2) hex = "0" + hex;
+      str += (j !== 0 ? " " : "") + hex;
+    }
+
+    str += '> speed<HS> time<' + t + '>\n';
+
+    strs.push(str);
+  });
+}
+
+window.onload = function() {
+  if (rawpcapdata !== null) {
+    process_and_init(rawpcapdata);
+  } else {
+    build_file_drop_area();
+  }
+};
+
+</script><body></body></html>
